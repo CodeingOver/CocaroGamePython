@@ -33,89 +33,147 @@ GUI_PRESETS: Tuple[DifficultyProfile, ...] = (
     DifficultyProfile(name="Địa ngục", depth=6, candidates=18, time_ms=1500),
 )
 
-CLI_CUSTOM_PRESETS: Tuple[DifficultyProfile, ...] = (
-    DifficultyProfile(name="CLI tùy chỉnh A", depth=4, candidates=14, time_ms=450),
-    DifficultyProfile(name="CLI tùy chỉnh B", depth=6, candidates=18, time_ms=1500),
+CUSTOM_PRESETS: Tuple[DifficultyProfile, ...] = (
+    DifficultyProfile(name="Tùy chỉnh A", depth=4, candidates=14, time_ms=450),
+    DifficultyProfile(name="Tùy chỉnh B", depth=6, candidates=18, time_ms=1500),
 )
-
-# Các trạng thái được chọn để đại diện khai cuộc, trung cuộc và tải cao gần cuối ván.
-SCENARIOS: Tuple[Scenario, ...] = (
-    Scenario(
-        name="Khai cuộc cân bằng",
-        moves=(
-            (5, 5, "X"),
-            (5, 4, "O"),
-            (4, 5, "X"),
-            (6, 5, "O"),
-            (5, 6, "X"),
-            (4, 4, "O"),
-        ),
-    ),
-    Scenario(
-        name="Trung cuộc tranh chấp",
-        moves=(
-            (5, 5, "X"),
-            (5, 4, "O"),
-            (4, 5, "X"),
-            (6, 5, "O"),
-            (5, 6, "X"),
-            (4, 4, "O"),
-            (6, 6, "X"),
-            (5, 7, "O"),
-            (4, 6, "X"),
-            (6, 4, "O"),
-            (3, 5, "X"),
-            (7, 5, "O"),
-        ),
-    ),
-    Scenario(
-        name="Tải cao gần cuối ván",
-        moves=(
-            (0, 0, "X"),
-            (0, 1, "O"),
-            (0, 2, "X"),
-            (0, 3, "O"),
-            (0, 4, "X"),
-            (0, 5, "O"),
-            (1, 0, "O"),
-            (1, 1, "X"),
-            (1, 2, "O"),
-            (1, 3, "X"),
-            (1, 4, "O"),
-            (1, 5, "X"),
-            (2, 0, "X"),
-            (2, 1, "O"),
-            (2, 2, "X"),
-            (2, 3, "O"),
-            (2, 4, "X"),
-            (2, 5, "O"),
-            (3, 0, "O"),
-            (3, 1, "X"),
-            (3, 2, "O"),
-            (3, 3, "X"),
-            (3, 4, "O"),
-            (3, 5, "X"),
-            (4, 0, "X"),
-            (4, 1, "O"),
-            (4, 2, "X"),
-            (4, 3, "O"),
-            (4, 4, "X"),
-            (4, 6, "O"),
-            (5, 0, "O"),
-            (5, 1, "X"),
-            (5, 2, "O"),
-            (5, 3, "X"),
-            (5, 4, "O"),
-            (5, 5, "X"),
-        ),
-    ),
-)
-
 
 def apply_scenario(game: CaroGame, scenario: Scenario) -> None:
     # Nạp nhanh trạng thái bàn cờ từ danh sách nước đi mẫu.
     for row, col, player in scenario.moves:
         game.make_move(Move(row, col), player)
+
+
+def parse_sizes(raw: str) -> List[int]:
+    # Parse chuỗi kích thước dạng "10,12,15" và loại bỏ phần tử rỗng/trùng.
+    values: List[int] = []
+    seen = set()
+
+    for item in raw.split(","):
+        token = item.strip()
+        if not token:
+            continue
+        size = int(token)
+        if size < 3:
+            raise ValueError("Kích thước bàn cờ phải >= 3")
+        if size in seen:
+            continue
+        seen.add(size)
+        values.append(size)
+
+    if not values:
+        raise ValueError("Cần ít nhất một kích thước bàn cờ hợp lệ")
+
+    return values
+
+
+def _build_scenario_moves(size: int, win_len: int, positions: Sequence[Tuple[int, int]]) -> List[Tuple[int, int, str]]:
+    # Xây trạng thái hợp lệ và tránh tạo bàn cờ đã có người thắng trước khi benchmark.
+    game = CaroGame(size=size, win_len=win_len)
+    moves: List[Tuple[int, int, str]] = []
+    ai_turn = True
+
+    for row, col in positions:
+        move = Move(row, col)
+        if not game.is_valid_move(move):
+            continue
+
+        player = "X" if ai_turn else "O"
+        game.make_move(move, player)
+        if game.check_winner(move) is not None:
+            game.undo_move(move)
+            continue
+
+        moves.append((row, col, player))
+        ai_turn = not ai_turn
+
+    # Bảo đảm đến lượt AI (X) để so đo benchmark nhất quán.
+    if len(moves) % 2 == 1:
+        moves.pop()
+
+    # Nếu kịch bản quá ngắn thì chèn trạng thái nhỏ quanh trung tâm.
+    if not moves:
+        center = size // 2
+        fallback = [(center, center), (center, max(0, center - 1))]
+        return _build_scenario_moves(size, win_len, fallback)
+
+    return moves
+
+
+def build_dynamic_scenarios(size: int, win_len: int) -> Tuple[Scenario, ...]:
+    # Tạo 3 kịch bản động theo kích thước bàn để benchmark không bị khóa cứng 10x10.
+    center = size // 2
+
+    def in_board(row: int, col: int) -> bool:
+        return 0 <= row < size and 0 <= col < size
+
+    def from_offsets(offsets: Sequence[Tuple[int, int]]) -> List[Tuple[int, int]]:
+        coords: List[Tuple[int, int]] = []
+        seen = set()
+        for dr, dc in offsets:
+            row, col = center + dr, center + dc
+            if not in_board(row, col):
+                continue
+            if (row, col) in seen:
+                continue
+            seen.add((row, col))
+            coords.append((row, col))
+        return coords
+
+    opening_offsets = [
+        (0, 0),
+        (0, -1),
+        (-1, 0),
+        (1, 0),
+        (0, 1),
+        (-1, -1),
+        (1, 1),
+        (-1, 1),
+        (1, -1),
+    ]
+
+    midgame_offsets = [
+        (0, 0),
+        (0, -1),
+        (0, 1),
+        (-1, 0),
+        (1, 0),
+        (-1, -1),
+        (1, 1),
+        (-1, 1),
+        (1, -1),
+        (0, -2),
+        (0, 2),
+        (-2, 0),
+        (2, 0),
+        (-2, -1),
+        (2, 1),
+        (-1, 2),
+        (1, -2),
+    ]
+
+    # Kịch bản tải cao: quét khối vuông ở góc để tăng mật độ bàn cờ.
+    block = min(size, 8)
+    heavy_positions: List[Tuple[int, int]] = []
+    for row in range(block):
+        cols = range(block) if row % 2 == 0 else range(block - 1, -1, -1)
+        for col in cols:
+            heavy_positions.append((row, col))
+
+    opening = Scenario(
+        name="Khai cuộc cân bằng",
+        moves=_build_scenario_moves(size, win_len, from_offsets(opening_offsets)),
+    )
+    midgame = Scenario(
+        name="Trung cuộc tranh chấp",
+        moves=_build_scenario_moves(size, win_len, from_offsets(midgame_offsets)),
+    )
+    heavy = Scenario(
+        name="Tải cao gần cuối ván",
+        moves=_build_scenario_moves(size, win_len, heavy_positions),
+    )
+
+    return (opening, midgame, heavy)
 
 
 def percentile(values: Sequence[float], p: float) -> float:
@@ -164,6 +222,8 @@ def run_profile(
             rows.append(
                 {
                     "profile": profile.name,
+                    "board_size": board_size,
+                    "win_len": win_len,
                     "depth": profile.depth,
                     "candidates": profile.candidates,
                     "time_budget_ms": profile.time_ms,
@@ -180,22 +240,27 @@ def run_profile(
 
 def summarize(rows: Sequence[Dict[str, object]]) -> List[Dict[str, object]]:
     # Tổng hợp theo profile để dùng trong báo cáo nghiệm thu.
-    grouped: Dict[str, List[float]] = {}
-    budgets: Dict[str, int] = {}
+    grouped: Dict[Tuple[str, int, int], List[float]] = {}
+    budgets: Dict[Tuple[str, int, int], int] = {}
 
     for row in rows:
         profile = str(row["profile"])
-        grouped.setdefault(profile, []).append(float(row["elapsed_ms"]))
-        budgets[profile] = int(row["time_budget_ms"])
+        board_size = int(row["board_size"])
+        win_len = int(row["win_len"])
+        key = (profile, board_size, win_len)
+        grouped.setdefault(key, []).append(float(row["elapsed_ms"]))
+        budgets[key] = int(row["time_budget_ms"])
 
     summary: List[Dict[str, object]] = []
-    for profile, values in grouped.items():
+    for (profile, board_size, win_len), values in grouped.items():
         over_2s = sum(1 for value in values if value > 2000.0)
         summary.append(
             {
                 "profile": profile,
+                "board_size": board_size,
+                "win_len": win_len,
                 "samples": len(values),
-                "time_budget_ms": budgets[profile],
+                "time_budget_ms": budgets[(profile, board_size, win_len)],
                 "min_ms": round(min(values), 3),
                 "avg_ms": round(mean(values), 3),
                 "p95_ms": round(percentile(values, 0.95), 3),
@@ -205,7 +270,7 @@ def summarize(rows: Sequence[Dict[str, object]]) -> List[Dict[str, object]]:
             }
         )
 
-    summary.sort(key=lambda item: str(item["profile"]))
+    summary.sort(key=lambda item: (int(item["board_size"]), str(item["profile"])))
     return summary
 
 
@@ -230,13 +295,13 @@ def write_markdown(path: Path, summary_rows: Sequence[Dict[str, object]], detail
     lines.append("")
     lines.append("## Tổng hợp theo cấu hình")
     lines.append("")
-    lines.append("| Cấu hình | Mẫu | Budget (ms) | Min | Avg | P95 | Max | Vượt 2s | Kết luận |")
-    lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---|")
+    lines.append("| Bàn cờ | Win_len | Cấu hình | Mẫu | Budget (ms) | Min | Avg | P95 | Max | Vượt 2s | Kết luận |")
+    lines.append("|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---|")
 
     for row in summary_rows:
         verdict = "Đạt" if bool(row["pass_all_under_2s"]) else "Chưa đạt"
         lines.append(
-            "| {profile} | {samples} | {time_budget_ms} | {min_ms} | {avg_ms} | {p95_ms} | {max_ms} | {over_2s} | {verdict} |".format(
+            "| {board_size} | {win_len} | {profile} | {samples} | {time_budget_ms} | {min_ms} | {avg_ms} | {p95_ms} | {max_ms} | {over_2s} | {verdict} |".format(
                 verdict=verdict,
                 **row,
             )
@@ -245,11 +310,11 @@ def write_markdown(path: Path, summary_rows: Sequence[Dict[str, object]], detail
     lines.append("")
     lines.append("## Chi tiết từng lượt")
     lines.append("")
-    lines.append("| Cấu hình | Kịch bản | Lần chạy | Thời gian (ms) | Nước đi | <=2s |")
-    lines.append("|---|---|---:|---:|---|---|")
+    lines.append("| Bàn cờ | Win_len | Cấu hình | Kịch bản | Lần chạy | Thời gian (ms) | Nước đi | <=2s |")
+    lines.append("|---:|---:|---|---|---:|---:|---|---|")
     for row in details_rows:
         lines.append(
-            "| {profile} | {scenario} | {attempt} | {elapsed_ms} | {move} | {pass_under_2000ms} |".format(**row)
+            "| {board_size} | {win_len} | {profile} | {scenario} | {attempt} | {elapsed_ms} | {move} | {pass_under_2000ms} |".format(**row)
         )
 
     path.write_text("\n".join(lines), encoding="utf-8")
@@ -257,8 +322,17 @@ def write_markdown(path: Path, summary_rows: Sequence[Dict[str, object]], detail
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Benchmark độ trễ phản hồi AI Cờ Caro")
-    parser.add_argument("--size", type=int, default=10, help="Kích thước bàn cờ")
-    parser.add_argument("--win-len", type=int, default=5, help="Số quân liên tiếp để thắng")
+    parser.add_argument(
+        "--sizes",
+        default="10",
+        help="Danh sách kích thước bàn cờ, ví dụ: 10,12,15",
+    )
+    parser.add_argument(
+        "--win-len",
+        type=int,
+        default=5,
+        help="Số quân liên tiếp để thắng (sẽ tự hạ xuống nếu lớn hơn size)",
+    )
     parser.add_argument("--repeats", type=int, default=3, help="Số lần chạy mỗi kịch bản")
     parser.add_argument(
         "--output-dir",
@@ -270,20 +344,25 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    sizes = parse_sizes(args.sizes)
 
-    all_profiles = GUI_PRESETS + CLI_CUSTOM_PRESETS
+    all_profiles = GUI_PRESETS + CUSTOM_PRESETS
     all_rows: List[Dict[str, object]] = []
 
-    for profile in all_profiles:
-        all_rows.extend(
-            run_profile(
-                profile=profile,
-                scenarios=SCENARIOS,
-                board_size=args.size,
-                win_len=args.win_len,
-                repeats=args.repeats,
+    for size in sizes:
+        win_len = min(args.win_len, size)
+        scenarios = build_dynamic_scenarios(size=size, win_len=win_len)
+
+        for profile in all_profiles:
+            all_rows.extend(
+                run_profile(
+                    profile=profile,
+                    scenarios=scenarios,
+                    board_size=size,
+                    win_len=win_len,
+                    repeats=args.repeats,
+                )
             )
-        )
 
     summary_rows = summarize(all_rows)
 
@@ -301,7 +380,8 @@ def main() -> None:
     for row in summary_rows:
         verdict = "ĐẠT" if bool(row["pass_all_under_2s"]) else "CHƯA ĐẠT"
         print(
-            f"- {row['profile']}: avg={row['avg_ms']}ms, p95={row['p95_ms']}ms, max={row['max_ms']}ms, "
+            f"- Bàn {row['board_size']} (win_len={row['win_len']}) - {row['profile']}: "
+            f"avg={row['avg_ms']}ms, p95={row['p95_ms']}ms, max={row['max_ms']}ms, "
             f"vượt_2s={row['over_2s']} -> {verdict}"
         )
 

@@ -2,16 +2,16 @@
 
 ## 1. Tổng quan hệ thống
 
-Ứng dụng là trò chơi Cờ Caro cho phép người chơi đấu với AI. Luồng chính gồm giao diện đồ họa hoặc terminal, logic luật chơi, mô-đun đánh giá bàn cờ và mô-đun tìm kiếm nước đi. AI sử dụng GBFS để lọc ứng viên, rồi Minimax kết hợp Alpha-Beta để chọn nước đi chiến lược.
+Ứng dụng là trò chơi Cờ Caro cho phép người chơi đấu với AI. Luồng chính gồm giao diện đồ họa, logic luật chơi, mô-đun đánh giá bàn cờ và mô-đun tìm kiếm nước đi. AI sử dụng GBFS để lọc ứng viên, rồi Minimax kết hợp Alpha-Beta để chọn nước đi chiến lược.
 
 ## 2. Công nghệ sử dụng
 
 - Python 3
 - `tkinter` cho giao diện đồ họa
-- Chạy được ở chế độ CLI và GUI
+- Chạy bằng giao diện GUI
 - Thuật toán tìm kiếm: GBFS, Minimax, Alpha-Beta
 - Heuristic đánh giá cục bộ bàn cờ
-- Script benchmark hiệu năng xuất báo cáo Markdown/CSV
+- Script benchmark hiệu năng đa kích thước bàn cờ, xuất báo cáo Markdown/CSV
 - Script kiểm thử chiến thuật cho các thế cờ bắt buộc
 
 ## 3. Cấu trúc thư mục
@@ -20,7 +20,6 @@
 Cocaro/
 ├─ ai.py
 ├─ benchmark.py
-├─ cli.py
 ├─ constants.py
 ├─ game.py
 ├─ gui.py
@@ -37,8 +36,7 @@ Cocaro/
 - `game.py`: mô hình bàn cờ và luật thắng.
 - `heuristics.py`: chấm điểm trạng thái bàn cờ.
 - `gui.py`: giao diện trực quan và các mức độ khó.
-- `cli.py`: giao diện dòng lệnh.
-- `benchmark.py`: đo độ trễ AI theo nhiều cấu hình và trạng thái bàn cờ.
+- `benchmark.py`: đo độ trễ AI theo nhiều cấu hình và nhiều kích thước bàn cờ.
 - `tactical_tests.py`: kiểm tra độ chính xác chiến thuật trong các tình huống bắt buộc.
 
 ## 4. Kiến trúc thành phần
@@ -51,7 +49,7 @@ Cocaro/
 
 ## 5. Luồng dữ liệu
 
-1. Người chơi nhập nước đi trên GUI hoặc CLI.
+1. Người chơi nhập nước đi trên GUI.
 2. `game.py` kiểm tra tính hợp lệ và cập nhật bàn cờ.
 3. Khi đến lượt AI, `ai.py` sinh các nước đi ứng viên gần vị trí đã đánh.
 4. GBFS chấm điểm từng ứng viên bằng heuristic để giữ lại các nước hứa hẹn nhất.
@@ -67,9 +65,8 @@ Cocaro/
 
 Ứng dụng không có API mạng. Các điểm vào và hàm lõi gồm:
 
-- `main.py`: chọn chế độ GUI hoặc CLI.
+- `main.py`: điểm vào ứng dụng GUI.
 - `gui.py`: điều khiển ván đấu bằng giao diện.
-- `cli.py`: điều khiển ván đấu bằng terminal.
 - `ai.py`: `ai_best_move`, `minimax`, `gbfs_rank_moves`.
 - `game.py`: `make_move`, `undo_move`, `check_winner`, `get_candidate_moves`.
 - `benchmark.py`: `run_profile`, `summarize`, `write_markdown`.
@@ -80,9 +77,7 @@ Cocaro/
 ```mermaid
 graph TD
     A[main.py] --> B[gui.py]
-    A --> C[cli.py]
     B --> D[game.py]
-    C --> D
     D --> E[heuristics.py]
     E --> F[ai.py]
     F --> D

@@ -5,7 +5,7 @@
 ## Mục tiêu nghiệm thu đề tài
 
 - Kiến trúc: GBFS lọc ứng viên, Minimax + Alpha-Beta duyệt sâu.
-- Hiệu năng: kiểm chứng mốc nhỏ hơn hoặc bằng 2 giây/lượt trên bàn 10x10 bằng script benchmark.
+- Hiệu năng: kiểm chứng mốc nhỏ hơn hoặc bằng 2 giây/lượt trên bàn cờ tùy chỉnh bằng script benchmark.
 - Chiến thuật: kiểm tra các ca bắt buộc thắng/chặn bằng tactical tests.
 
 ## Chạy chương trình
@@ -14,16 +14,10 @@
 python main.py
 ```
 
-Chạy chế độ terminal:
-
-```bash
-python main.py --cli
-```
-
 Chạy benchmark hiệu năng:
 
 ```bash
-python benchmark.py --size 10 --win-len 5 --repeats 2
+python benchmark.py --sizes 10,12,15 --win-len 5 --repeats 2
 ```
 
 Chạy kiểm thử chiến thuật:
@@ -38,11 +32,10 @@ Kết quả benchmark sẽ được xuất ra thư mục `docs/benchmarks/` gồ
 
 - `main.py`: điểm khởi động ứng dụng.
 - `gui.py`: giao diện đồ họa và các mức độ khó.
-- `cli.py`: chế độ chơi trên terminal.
 - `ai.py`: tầng GBFS, Minimax, Alpha-Beta và giới hạn thời gian.
 - `heuristics.py`: hàm đánh giá bàn cờ.
 - `game.py`: logic luật chơi và sinh nước đi ứng viên.
-- `benchmark.py`: đo độ trễ phản hồi AI theo nhiều cấu hình và xuất báo cáo.
+- `benchmark.py`: đo độ trễ phản hồi AI theo nhiều cấu hình và nhiều kích thước bàn cờ tùy chỉnh.
 - `tactical_tests.py`: xác minh các tình huống chiến thuật quan trọng (thắng ngay, chặn ngay).
 
 ## Ghi chú

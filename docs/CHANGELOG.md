@@ -8,3 +8,7 @@
 - Bổ sung `tactical_tests.py` để kiểm thử các tình huống chiến thuật bắt buộc (thắng ngay, chặn ngay, kết thúc đường chéo).
 - Hoàn thiện chú thích mã nguồn theo định dạng comment `#` (không dùng docstring) trong các module chính để phù hợp báo cáo môn Trí tuệ nhân tạo.
 - Cập nhật tài liệu `README.md` và `docs/architecture.md` để đồng bộ với luồng benchmark/kiểm thử mới.
+
+- Loại bỏ chế độ chạy CLI: xóa `cli.py`, cập nhật `main.py` để chỉ chạy giao diện GUI.
+- Nâng `benchmark.py` để hỗ trợ bàn cờ tùy chỉnh qua `--sizes` (ví dụ `10,12,15`) thay vì cố định theo kịch bản 10x10.
+- Cập nhật lại tài liệu kiến trúc và hướng dẫn chạy để phản ánh việc bỏ CLI và benchmark đa kích thước bàn cờ.

@@ -127,7 +127,7 @@ class CaroGame:
         return "".join("".join(row) for row in self.board)
 
     def print_board(self) -> None:
-        # In bàn cờ dạng lưới ra terminal để chơi ở chế độ CLI.
+        # In bàn cờ dạng lưới ra terminal để debug nhanh trạng thái game.
 
         header = "    " + " ".join(f"{i + 1:2d}" for i in range(self.size))
         print(header)

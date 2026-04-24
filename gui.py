@@ -443,10 +443,10 @@ class CaroGUI:
             return None
 
         return value
-
+    
     def apply_custom_difficulty(self) -> None:
         # Chuyển sang chế độ tùy chỉnh nhưng vẫn giữ luồng xử lý giống preset.
-        depth = self._read_int_var(self.depth_var, "Độ sâu AI", min_value=1, max_value=10)
+        depth = self._read_int_var(self.depth_var, "Độ sâu AI", min_value=1, max_value=50)
         if depth is None:
             return
 

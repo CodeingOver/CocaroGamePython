@@ -238,7 +238,7 @@ class CaroGUI:
 
         subtitle = ttk.Label(
             self.menu_frame,
-            text="GBFS + Minimax + Alpha-Beta + Heuristic",
+            text="GBFS + Minimax Alpha-Beta",
             style="Subtitle.TLabel",
             anchor="center",
         )

@@ -420,11 +420,49 @@ class CaroGUI:
                 )
             )
 
+    def _read_int_var(
+        self,
+        var: tk.IntVar,
+        field_name: str,
+        min_value: Optional[int] = None,
+        max_value: Optional[int] = None,
+    ) -> Optional[int]:
+        # Đọc IntVar an toàn để tránh lỗi TclError khi người dùng để trống Spinbox.
+        try:
+            value = var.get()
+        except tk.TclError:
+            messagebox.showerror("Lỗi nhập liệu", f"{field_name} phải là số nguyên hợp lệ.")
+            return None
+
+        if min_value is not None and value < min_value:
+            messagebox.showerror("Lỗi nhập liệu", f"{field_name} phải >= {min_value}.")
+            return None
+
+        if max_value is not None and value > max_value:
+            messagebox.showerror("Lỗi nhập liệu", f"{field_name} phải <= {max_value}.")
+            return None
+
+        return value
+
     def apply_custom_difficulty(self) -> None:
         # Chuyển sang chế độ tùy chỉnh nhưng vẫn giữ luồng xử lý giống preset.
-        depth = self.depth_var.get()
-        candidates = self.candidate_var.get()
-        time_ms = self.time_budget_var.get()
+        depth = self._read_int_var(self.depth_var, "Độ sâu AI", min_value=1, max_value=10)
+        if depth is None:
+            return
+
+        candidates = self._read_int_var(
+            self.candidate_var,
+            "Số ứng viên mỗi lớp",
+            min_value=4,
+            max_value=MAX_BOARD_SIZE * MAX_BOARD_SIZE,
+        )
+        if candidates is None:
+            return
+
+        time_ms = self._read_int_var(self.time_budget_var, "Giới hạn thời gian mỗi nước AI", min_value=50, max_value=5000)
+        if time_ms is None:
+            return
+
         self.difficulty_var.set("tuy_chinh")
         self.difficulty_desc_var.set(
             f"Tùy chỉnh: độ sâu {depth}, ứng viên {candidates}, {time_ms}ms/nước."
@@ -466,8 +504,30 @@ class CaroGUI:
 
     def start_new_game(self) -> None:
         # Khởi tạo ván mới với bộ tham số hiện tại từ màn cài đặt.
-        size = self.size_var.get()
-        win_len = self.win_len_var.get()
+        size = self._read_int_var(self.size_var, "Kích thước bàn cờ", min_value=MIN_BOARD_SIZE, max_value=MAX_BOARD_SIZE)
+        if size is None:
+            return
+
+        win_len = self._read_int_var(self.win_len_var, "Số quân để thắng", min_value=MIN_BOARD_SIZE, max_value=size)
+        if win_len is None:
+            return
+
+        depth = self._read_int_var(self.depth_var, "Độ sâu AI", min_value=1, max_value=10)
+        if depth is None:
+            return
+
+        candidates = self._read_int_var(
+            self.candidate_var,
+            "Số ứng viên mỗi lớp",
+            min_value=4,
+            max_value=size * size,
+        )
+        if candidates is None:
+            return
+
+        time_budget = self._read_int_var(self.time_budget_var, "Giới hạn thời gian mỗi nước AI", min_value=50, max_value=5000)
+        if time_budget is None:
+            return
 
         if size < MIN_BOARD_SIZE or size > MAX_BOARD_SIZE:
             messagebox.showerror(
@@ -493,7 +553,7 @@ class CaroGUI:
         self.game_info_var.set(
             (
                 f"Bàn {size}x{size} | Thắng với {win_len} | Độ khó {self._difficulty_name_for_info()} | "
-                f"Độ sâu {self.depth_var.get()} | Ứng viên {self.candidate_var.get()} | {self.time_budget_var.get()}ms/nước"
+                f"Độ sâu {depth} | Ứng viên {candidates} | {time_budget}ms/nước"
             )
         )
 
@@ -593,9 +653,19 @@ class CaroGUI:
         self._set_board_enabled(False)
 
         try:
-            depth = self.depth_var.get()
-            max_candidates = self.candidate_var.get()
-            time_budget = self.time_budget_var.get()
+            depth = self._read_int_var(self.depth_var, "Độ sâu AI", min_value=1, max_value=10)
+            max_candidates = self._read_int_var(
+                self.candidate_var,
+                "Số ứng viên mỗi lớp",
+                min_value=4,
+                max_value=self.game.size * self.game.size,
+            )
+            time_budget = self._read_int_var(self.time_budget_var, "Giới hạn thời gian mỗi nước AI", min_value=50, max_value=5000)
+
+            if depth is None or max_candidates is None or time_budget is None:
+                self.status_var.set("Cấu hình AI không hợp lệ. Vui lòng kiểm tra cài đặt.")
+                return
+
             move = ai_best_move(
                 self.game,
                 depth=depth,

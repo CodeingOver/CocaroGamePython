@@ -73,6 +73,24 @@ TACTICAL_CASES: Tuple[TacticalCase, ...] = (
         max_candidates=18,
         max_time_ms=1500,
     ),
+    TacticalCase(
+        name="AI ưu tiên chặn thay vì nối thẳng",
+        size=10,
+        win_len=5,
+        moves=(
+            (5, 3, AI_MARK),
+            (5, 4, AI_MARK),
+            (5, 5, AI_MARK),
+            (2, 7, HUMAN_MARK),
+            (3, 7, HUMAN_MARK),
+            (4, 7, HUMAN_MARK),
+            (5, 7, HUMAN_MARK),
+        ),
+        expected={(1, 7), (6, 7)},
+        depth=5,
+        max_candidates=16,
+        max_time_ms=850,
+    ),
 )
 
 

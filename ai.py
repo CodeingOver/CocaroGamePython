@@ -15,7 +15,7 @@ class SearchTimeout(Exception):
 
 # Bộ nhớ đệm nhanh theo trạng thái bàn cờ hiện tại.
 # Mục tiêu là tránh lặp lại một lượt tìm kiếm khi người chơi quay lại cùng trạng thái.
-STATE_BEST_MOVE_CACHE: Dict[str, Move] = {}
+STATE_BEST_MOVE_CACHE: Dict[Tuple[str, int, int], Move] = {}
 
 
 def _greedy_move_score(
@@ -66,6 +66,15 @@ def gbfs_rank_moves(
     return [mv for _, mv in scored]
 
 
+def _is_immediate_winning_move(game: CaroGame, move: Move, player: str) -> bool:
+    # Kiểm tra nhanh nước đi có thắng ngay trong 1 ply hay không.
+    game.make_move(move, player)
+    try:
+        return game.check_winner(move) == player
+    finally:
+        game.undo_move(move)
+
+
 def minimax(
     game: CaroGame,
     depth: int,
@@ -73,7 +82,7 @@ def minimax(
     beta: int,
     maximizing: bool,
     last_move: Optional[Move],
-    transposition: Dict[Tuple[str, bool], Tuple[int, int]],
+    transposition: Dict[Tuple[str, bool, int], int],
     max_candidates: int,
     deadline: Optional[float],
 ) -> int:
@@ -90,13 +99,11 @@ def minimax(
     if depth == 0:
         return evaluate_board(game)
 
-    # Bảng chuyển vị giúp tránh tính lại cùng một trạng thái ở cùng vai trò lượt đi.
-    key = (game.serialize(), maximizing)
+    # Bảng chuyển vị cần gắn cả độ sâu để tránh tái dùng kết quả tìm kiếm nông cho ngữ cảnh sâu.
+    key = (game.serialize(), maximizing, depth)
     cached = transposition.get(key)
     if cached is not None:
-        cached_value, cached_depth = cached
-        if cached_depth >= depth:
-            return cached_value
+        return cached
 
     # Phân vai theo lượt đi hiện tại để dùng cùng một thân hàm cho cả hai phía.
     if maximizing:
@@ -163,7 +170,7 @@ def minimax(
             if beta <= alpha:
                 break
 
-    transposition[key] = (value, depth)
+    transposition[key] = value
     return value
 
 
@@ -180,13 +187,28 @@ def ai_best_move(
     # 3) Duyệt sâu dần từ 1..depth, dừng sớm nếu hết thời gian.
     # 4) Giữ lại phương án tốt nhất đã hoàn thành ở độ sâu gần nhất.
 
-    state_key = game.serialize()
+    state_key = (game.serialize(), depth, max_candidates)
     cached_move = STATE_BEST_MOVE_CACHE.get(state_key)
     if cached_move is not None and game.is_valid_move(cached_move):
-        # Cache theo trạng thái giúp phản hồi tức thì khi bàn cờ lặp lại.
+        # Cache theo trạng thái + tham số tìm kiếm giúp tránh trả về nước cũ của cấu hình khác.
         return cached_move
 
     candidates = game.get_candidate_moves(radius=1)
+
+    # Tactical pre-check: nếu có nước thắng ngay thì đi luôn, không cần chờ minimax.
+    winning_moves = [mv for mv in candidates if _is_immediate_winning_move(game, mv, AI_MARK)]
+    if winning_moves:
+        best_move = gbfs_rank_moves(game, winning_moves, AI_MARK, HUMAN_MARK, maximizing=True)[0]
+        STATE_BEST_MOVE_CACHE[state_key] = best_move
+        return best_move
+
+    # Tactical pre-check: nếu đối thủ có nước thắng ngay ở lượt kế, ưu tiên chặn trước khi tìm sâu.
+    blocking_moves = [mv for mv in candidates if _is_immediate_winning_move(game, mv, HUMAN_MARK)]
+    if blocking_moves:
+        best_move = gbfs_rank_moves(game, blocking_moves, AI_MARK, HUMAN_MARK, maximizing=True)[0]
+        STATE_BEST_MOVE_CACHE[state_key] = best_move
+        return best_move
+
     # Tầng GBFS: chấm điểm toàn bộ nước ứng viên rồi chỉ đưa nhóm tốt nhất vào vòng Minimax.
     candidates = gbfs_rank_moves(game, candidates, AI_MARK, HUMAN_MARK, maximizing=True)
     if len(candidates) > max_candidates:
@@ -194,18 +216,19 @@ def ai_best_move(
 
     best_move = candidates[0]
     deadline = None if max_time_ms is None else perf_counter() + (max_time_ms / 1000.0)
-    cache: Dict[Tuple[str, bool], Tuple[int, int]] = {}
+    cache: Dict[Tuple[str, bool, int], int] = {}
 
     for current_depth in range(1, depth + 1):
-        # Luôn thử lại từ nước tốt nhất hiện tại trước để tăng cơ hội giữ được phương án tốt trong giới hạn thời gian.
-        if best_move in candidates:
-            candidates = [best_move] + [mv for mv in candidates if mv != best_move]
+        # Re-rank lại theo từng lớp sâu để tránh lock-in vào một hướng từ vòng lặp trước.
+        search_candidates = gbfs_rank_moves(game, candidates, AI_MARK, HUMAN_MARK, maximizing=True)
+        if len(search_candidates) > max_candidates:
+            search_candidates = search_candidates[:max_candidates]
 
         best_score = -INF
         depth_best_move = best_move
 
         try:
-            for move in candidates:
+            for move in search_candidates:
                 if deadline is not None and perf_counter() >= deadline:
                     raise SearchTimeout()
 

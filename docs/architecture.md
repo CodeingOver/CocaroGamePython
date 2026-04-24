@@ -2,7 +2,7 @@
 
 ## 1. Tổng quan hệ thống
 
-Ứng dụng là trò chơi Cờ Caro cho phép người chơi đấu với AI. Luồng chính gồm giao diện đồ họa, logic luật chơi, mô-đun đánh giá bàn cờ và mô-đun tìm kiếm nước đi. AI sử dụng GBFS để lọc ứng viên, rồi Minimax kết hợp Alpha-Beta để chọn nước đi chiến lược.
+Ứng dụng là trò chơi Cờ Caro cho phép người chơi đấu với AI. Luồng chính gồm giao diện đồ họa, logic luật chơi, mô-đun đánh giá bàn cờ và mô-đun tìm kiếm nước đi. AI xử lý chiến thuật tức thời (thắng/chặn trong 1 bước), sau đó dùng GBFS để lọc ứng viên và Minimax + Alpha-Beta để chọn nước đi chiến lược.
 
 ## 2. Công nghệ sử dụng
 
@@ -44,7 +44,7 @@ Cocaro/
 - Tầng giao diện nhận tương tác từ người chơi.
 - Tầng game xử lý hợp lệ nước đi, undo/redo và kiểm tra thắng.
 - Tầng heuristic đánh giá giá trị của trạng thái hiện tại.
-- Tầng AI dùng GBFS để sắp xếp và lọc ứng viên, sau đó gọi Minimax + Alpha-Beta để quyết định.
+- Tầng AI kiểm tra nước thắng/chặn tức thời trước, sau đó dùng GBFS để sắp xếp ứng viên và gọi Minimax + Alpha-Beta để quyết định.
 - Tầng kiểm chứng kỹ thuật gồm benchmark và tactical tests để xác nhận claim hiệu năng và chiến thuật.
 
 ## 5. Luồng dữ liệu
@@ -52,10 +52,11 @@ Cocaro/
 1. Người chơi nhập nước đi trên GUI.
 2. `game.py` kiểm tra tính hợp lệ và cập nhật bàn cờ.
 3. Khi đến lượt AI, `ai.py` sinh các nước đi ứng viên gần vị trí đã đánh.
-4. GBFS chấm điểm từng ứng viên bằng heuristic để giữ lại các nước hứa hẹn nhất.
-5. Minimax + Alpha-Beta duyệt sâu trên tập ứng viên đã lọc.
-6. Nước đi tốt nhất được trả về cho giao diện và cập nhật lên bàn cờ.
-7. Khi cần nghiệm thu đề tài, `benchmark.py` và `tactical_tests.py` chạy độc lập để sinh bằng chứng định lượng.
+4. AI ưu tiên xử lý ngay các nước thắng/chặn bắt buộc nếu tồn tại.
+5. Nếu không có tình huống bắt buộc, GBFS chấm điểm ứng viên để giữ lại các nước hứa hẹn nhất.
+6. Minimax + Alpha-Beta duyệt sâu trên tập ứng viên đã lọc.
+7. Nước đi tốt nhất được trả về cho giao diện và cập nhật lên bàn cờ.
+8. Khi cần nghiệm thu đề tài, `benchmark.py` và `tactical_tests.py` chạy độc lập để sinh bằng chứng định lượng.
 
 ## 6. Cơ chế bảo mật
 

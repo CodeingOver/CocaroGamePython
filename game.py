@@ -61,10 +61,15 @@ class CaroGame:
             center = self.size // 2
             return [Move(center, center)]
 
+        # Giai đoạn đầu ván cần mở rộng bán kính để tránh bị "khóa tầm nhìn" vào một trục thẳng.
+        adaptive_radius = radius
+        if len(occupied) <= max(6, self.win_len):
+            adaptive_radius = max(radius, 2)
+
         candidates = set()
         for r, c in occupied:
-            for dr in range(-radius, radius + 1):
-                for dc in range(-radius, radius + 1):
+            for dr in range(-adaptive_radius, adaptive_radius + 1):
+                for dc in range(-adaptive_radius, adaptive_radius + 1):
                     nr, nc = r + dr, c + dc
                     if 0 <= nr < self.size and 0 <= nc < self.size and self.board[nr][nc] == EMPTY:
                         candidates.add((nr, nc))

@@ -13,3 +13,4 @@
 - Nâng `benchmark.py` để hỗ trợ bàn cờ tùy chỉnh qua `--sizes` (ví dụ `10,12,15`) thay vì cố định theo kịch bản 10x10.
 - Cập nhật lại tài liệu kiến trúc và hướng dẫn chạy để phản ánh việc bỏ CLI và benchmark đa kích thước bàn cờ.
 - Sửa lỗi `TclError` trong GUI khi ô `Spinbox` bị để trống: thêm hàm đọc số an toàn và kiểm tra hợp lệ trước khi áp dụng cấu hình tùy chỉnh, bắt đầu ván mới, hoặc để AI tính nước đi.
+- Sửa hành vi AI có xu hướng nối thẳng thiếu phản ứng: thêm tactical pre-check để ưu tiên nước thắng ngay/chặn thua ngay trước khi vào Minimax, đồng thời cải thiện sinh ứng viên và cơ chế ordering/cache theo độ sâu.

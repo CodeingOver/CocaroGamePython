@@ -1,6 +1,6 @@
 # Cờ Caro AI
 
-Ứng dụng Cờ Caro cho phép người chơi đấu với AI ở nhiều mức độ khó. AI ưu tiên xử lý chiến thuật tức thời (thắng ngay/chặn thua ngay), sau đó dùng tầng GBFS để xếp hạng ứng viên và Minimax + Alpha-Beta để duyệt sâu trong giới hạn thời gian.
+Ứng dụng Cờ Caro cho phép người chơi đấu với AI ở nhiều mức độ khó. AI dùng tầng GBFS để xếp hạng và lọc ứng viên theo đánh giá cục bộ, sau đó Minimax + Alpha-Beta duyệt sâu để chọn nước đi tối ưu trong giới hạn thời gian.
 
 ## Mục tiêu nghiệm thu đề tài
 
@@ -40,4 +40,4 @@ Kết quả benchmark sẽ được xuất ra thư mục `docs/benchmarks/` gồ
 
 ## Ghi chú
 
-AI được thiết kế để phản hồi nhanh trên bàn cờ lớn bằng cách sinh ứng viên theo bán kính thích nghi, xử lý chiến thuật tức thời trước, rồi chỉ duyệt sâu vào các nhánh có điểm tốt nhất.
+AI được thiết kế để phản hồi nhanh trên bàn cờ lớn bằng cách sinh ứng viên theo bán kính thích nghi, sau đó chỉ duyệt sâu vào các nhánh có điểm GBFS tốt nhất.

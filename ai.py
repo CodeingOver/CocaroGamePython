@@ -34,7 +34,9 @@ def _greedy_move_score(
     game.make_move(move, player)
     try:
         if game.check_winner(move) == player:
-            return INF // 4
+            # Cùng một sự kiện thắng ngay nhưng dấu điểm phải phụ thuộc phía đang xét.
+            return INF // 4 if player == AI_MARK else -(INF // 4)
+
         score = evaluate_board(game)
         if player == HUMAN_MARK:
             score = -score
@@ -43,7 +45,11 @@ def _greedy_move_score(
         game.make_move(move, opponent)
         try:
             if game.check_winner(move) == opponent:
-                score += INF // 8
+                # Chặn thắng ngay là tín hiệu chiến thuật rất mạnh trong GBFS local scoring.
+                if player == AI_MARK:
+                    score += INF // 8
+                else:
+                    score -= INF // 8
         finally:
             game.undo_move(move)
         return score
@@ -64,15 +70,6 @@ def gbfs_rank_moves(
 
     scored.sort(key=lambda x: x[0], reverse=maximizing)
     return [mv for _, mv in scored]
-
-
-def _is_immediate_winning_move(game: CaroGame, move: Move, player: str) -> bool:
-    # Kiểm tra nhanh nước đi có thắng ngay trong 1 ply hay không.
-    game.make_move(move, player)
-    try:
-        return game.check_winner(move) == player
-    finally:
-        game.undo_move(move)
 
 
 def minimax(
@@ -194,20 +191,6 @@ def ai_best_move(
         return cached_move
 
     candidates = game.get_candidate_moves(radius=1)
-
-    # Tactical pre-check: nếu có nước thắng ngay thì đi luôn, không cần chờ minimax.
-    winning_moves = [mv for mv in candidates if _is_immediate_winning_move(game, mv, AI_MARK)]
-    if winning_moves:
-        best_move = gbfs_rank_moves(game, winning_moves, AI_MARK, HUMAN_MARK, maximizing=True)[0]
-        STATE_BEST_MOVE_CACHE[state_key] = best_move
-        return best_move
-
-    # Tactical pre-check: nếu đối thủ có nước thắng ngay ở lượt kế, ưu tiên chặn trước khi tìm sâu.
-    blocking_moves = [mv for mv in candidates if _is_immediate_winning_move(game, mv, HUMAN_MARK)]
-    if blocking_moves:
-        best_move = gbfs_rank_moves(game, blocking_moves, AI_MARK, HUMAN_MARK, maximizing=True)[0]
-        STATE_BEST_MOVE_CACHE[state_key] = best_move
-        return best_move
 
     # Tầng GBFS: chấm điểm toàn bộ nước ứng viên rồi chỉ đưa nhóm tốt nhất vào vòng Minimax.
     candidates = gbfs_rank_moves(game, candidates, AI_MARK, HUMAN_MARK, maximizing=True)

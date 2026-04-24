@@ -10,6 +10,7 @@ from game import CaroGame, Move
 
 
 DIFFICULTY_ORDER = ["de", "binh_thuong", "kho", "cuc_kho", "dia_nguc"]
+# Preset độ khó chuẩn để kiểm soát trade-off giữa chất lượng nước đi và thời gian phản hồi.
 DIFFICULTY_PRESETS = {
     "de": {
         "name": "Dễ",
@@ -50,6 +51,7 @@ DIFFICULTY_PRESETS = {
 
 
 def suggested_depth(size: int) -> int:
+    # Gợi ý độ sâu mặc định theo kích thước bàn cờ.
     if size <= 3:
         return 9
     if size <= 5:
@@ -60,6 +62,7 @@ def suggested_depth(size: int) -> int:
 
 
 def suggested_candidate_limit(size: int) -> int:
+    # Gợi ý số ứng viên trên mỗi lớp Minimax để tránh nổ số nhánh.
     if size <= 5:
         return size * size
     if size <= 8:
@@ -69,8 +72,9 @@ def suggested_candidate_limit(size: int) -> int:
 
 class CaroGUI:
     def __init__(self, root: tk.Tk) -> None:
+        # Khởi tạo cửa sổ, trạng thái ván đấu và toàn bộ biến điều khiển UI.
         self.root = root
-        self.root.title("Cờ Caro AI - Minimax Alpha-Beta")
+        self.root.title("Cờ Caro AI - GBFS + Minimax")
         self.root.minsize(760, 680)
 
         self.palette = {
@@ -137,6 +141,7 @@ class CaroGUI:
         self._show_screen(self.menu_frame)
 
     def _configure_styles(self) -> None:
+        # Cấu hình theme cho toàn bộ widget để giao diện nhất quán.
         self.style.theme_use("clam")
         self.style.configure("App.TFrame", background=self.palette["bg"])
         self.style.configure(
@@ -213,12 +218,14 @@ class CaroGUI:
         self.style.map("Soft.TButton", background=[("active", "#e9efff")])
 
     def _show_screen(self, frame: ttk.Frame) -> None:
+        # Chuyển giữa menu, màn cài đặt và màn chơi.
         self.menu_frame.grid_forget()
         self.settings_frame.grid_forget()
         self.game_frame.grid_forget()
         frame.grid(row=0, column=0, sticky="nsew")
 
     def _build_menu_screen(self) -> None:
+        # Dựng màn hình menu chính.
         self.menu_frame.columnconfigure(0, weight=1)
 
         title = ttk.Label(
@@ -231,7 +238,7 @@ class CaroGUI:
 
         subtitle = ttk.Label(
             self.menu_frame,
-            text="Minimax + Alpha-Beta + Heuristic",
+            text="GBFS + Minimax + Alpha-Beta + Heuristic",
             style="Subtitle.TLabel",
             anchor="center",
         )
@@ -266,6 +273,7 @@ class CaroGUI:
         tagline.grid(row=3, column=0, pady=(14, 0), sticky="ew")
 
     def _build_settings_screen(self) -> None:
+        # Dựng màn hình cài đặt gồm luật chơi, độ khó preset và tùy chỉnh nâng cao.
         self.settings_frame.columnconfigure(0, weight=1)
 
         title = ttk.Label(self.settings_frame, text="Cài đặt trò chơi", style="SectionTitle.TLabel")
@@ -367,6 +375,7 @@ class CaroGUI:
         )
 
     def _build_game_screen(self) -> None:
+        # Dựng màn hình ván đấu: thanh điều khiển, trạng thái và khu vực bàn cờ.
         self.game_frame.columnconfigure(0, weight=1)
         self.game_frame.rowconfigure(2, weight=1)
 
@@ -387,9 +396,11 @@ class CaroGUI:
         self.board_frame.grid(row=2, column=0, sticky="nsew")
 
     def _on_difficulty_selected(self) -> None:
+        # Đồng bộ tham số khi người dùng đổi preset độ khó.
         self._apply_difficulty_profile(self.difficulty_var.get(), update_status=True)
 
     def _apply_difficulty_profile(self, key: str, update_status: bool = True) -> None:
+        # Áp preset vào các biến AI: depth, candidate limit và time budget.
         preset = DIFFICULTY_PRESETS.get(key)
         if preset is None:
             return
@@ -410,6 +421,7 @@ class CaroGUI:
             )
 
     def apply_custom_difficulty(self) -> None:
+        # Chuyển sang chế độ tùy chỉnh nhưng vẫn giữ luồng xử lý giống preset.
         depth = self.depth_var.get()
         candidates = self.candidate_var.get()
         time_ms = self.time_budget_var.get()
@@ -420,6 +432,7 @@ class CaroGUI:
         self.status_var.set("Đã áp dụng cấu hình tùy chỉnh")
 
     def _difficulty_name_for_info(self) -> str:
+        # Lấy tên độ khó để hiển thị trong khung thông tin trận.
         key = self.difficulty_var.get()
         preset = DIFFICULTY_PRESETS.get(key)
         if preset is None:
@@ -427,6 +440,7 @@ class CaroGUI:
         return preset["name"]
 
     def show_help(self) -> None:
+        # Hiển thị luật chơi và gợi ý chọn tham số cơ bản.
         help_text = (
             "Luật chơi:\n"
             "- Bạn đánh O, AI đánh X.\n"
@@ -438,10 +452,12 @@ class CaroGUI:
         messagebox.showinfo("Hướng dẫn", help_text)
 
     def start_game_from_menu(self) -> None:
+        # Vào màn chơi và khởi tạo ván mới ngay từ menu.
         self._show_screen(self.game_frame)
         self.start_new_game()
 
     def back_to_menu(self) -> None:
+        # Hủy trạng thái ván hiện tại và quay lại menu chính.
         self.game_over = True
         self.ai_thinking = False
         self.highlighted_move = None
@@ -449,6 +465,7 @@ class CaroGUI:
         self._show_screen(self.menu_frame)
 
     def start_new_game(self) -> None:
+        # Khởi tạo ván mới với bộ tham số hiện tại từ màn cài đặt.
         size = self.size_var.get()
         win_len = self.win_len_var.get()
 
@@ -491,6 +508,7 @@ class CaroGUI:
             self.root.after(80, self.perform_ai_move)
 
     def _build_board(self, size: int) -> None:
+        # Tạo lưới nút theo kích thước bàn cờ; tự điều chỉnh font theo size.
         for child in self.board_frame.winfo_children():
             child.destroy()
 
@@ -537,6 +555,7 @@ class CaroGUI:
             self.buttons.append(row_buttons)
 
     def _on_cell_hover(self, row: int, col: int, enter: bool) -> None:
+        # Hiệu ứng hover chỉ bật ở lượt người chơi và trên ô trống.
         if self.game is None or self.ai_thinking or self.game_over or not self.human_turn:
             return
         if self.game.board[row][col] != EMPTY:
@@ -546,6 +565,7 @@ class CaroGUI:
         btn.configure(bg=self.palette["cell_hover"] if enter else self.palette["cell_bg"])
 
     def on_cell_click(self, row: int, col: int) -> None:
+        # Xử lý lượt đánh của người chơi, sau đó chuyển lượt cho AI.
         if self.game is None or self.game_over or self.ai_thinking or not self.human_turn:
             return
 
@@ -565,6 +585,7 @@ class CaroGUI:
         self.root.after(50, self.perform_ai_move)
 
     def perform_ai_move(self) -> None:
+        # Gọi bộ chọn nước đi AI với cấu hình hiện hành và cập nhật bàn cờ.
         if self.game is None or self.game_over:
             return
 
@@ -596,6 +617,7 @@ class CaroGUI:
         self.status_var.set("Lượt của bạn")
 
     def _render_move(self, move: Move) -> None:
+        # Vẽ nước đi mới và cập nhật highlight cho nước đi gần nhất.
         if self.game is None:
             return
 
@@ -636,6 +658,7 @@ class CaroGUI:
         self.highlighted_move = move
 
     def _finish_if_terminal(self) -> bool:
+        # Kiểm tra điều kiện kết thúc sau mỗi lượt; trả True nếu ván đã dừng.
         if self.game is None:
             return True
 
@@ -664,6 +687,7 @@ class CaroGUI:
         return False
 
     def _set_board_enabled(self, enabled: bool) -> None:
+        # Khóa/mở thao tác click trên toàn bộ ô trống của bàn cờ.
         if self.game is None:
             return
 
@@ -675,6 +699,7 @@ class CaroGUI:
 
 
 def main() -> None:
+    # Điểm vào GUI.
     root = tk.Tk()
     CaroGUI(root)
     root.mainloop()

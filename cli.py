@@ -8,6 +8,8 @@ from game import CaroGame, Move
 
 
 def read_int(prompt: str, default: int, min_value: int, max_value: Optional[int] = None) -> int:
+    # Đọc một số nguyên có kiểm tra miền giá trị từ terminal.
+
     while True:
         raw = input(f"{prompt} [{default}]: ").strip()
         if not raw:
@@ -21,33 +23,37 @@ def read_int(prompt: str, default: int, min_value: int, max_value: Optional[int]
             return value
         except ValueError:
             if max_value is None:
-                print(f"Vui long nhap so nguyen >= {min_value}.")
+                print(f"Vui lòng nhập số nguyên >= {min_value}.")
             else:
-                print(f"Vui long nhap so nguyen trong khoang [{min_value}, {max_value}].")
+                print(f"Vui lòng nhập số nguyên trong khoảng [{min_value}, {max_value}].")
 
 
 def ask_human_move(game: CaroGame) -> Move:
+    # Đọc nước đi của người chơi theo định dạng hàng cột (1-based).
+
     while True:
-        raw = input("Nhap nuoc di (hang cot), vi du: 3 4: ").strip().split()
+        raw = input("Nhập nước đi (hàng cột), ví dụ: 3 4: ").strip().split()
         if len(raw) != 2:
-            print("Dinh dang khong hop le. Hay nhap 2 so: hang cot.")
+            print("Định dạng không hợp lệ. Hãy nhập 2 số: hàng cột.")
             continue
 
         try:
             row = int(raw[0]) - 1
             col = int(raw[1]) - 1
         except ValueError:
-            print("Hang/cot phai la so nguyen.")
+            print("Hàng/cột phải là số nguyên.")
             continue
 
         move = Move(row, col)
         if not game.is_valid_move(move):
-            print("Nuoc di khong hop le hoac o da duoc danh. Thu lai.")
+            print("Nước đi không hợp lệ hoặc ô đã được đánh. Thử lại.")
             continue
         return move
 
 
 def suggested_depth(size: int) -> int:
+    # Gợi ý độ sâu mặc định theo kích thước bàn cờ.
+
     if size <= 3:
         return 9
     if size <= 5:
@@ -58,6 +64,8 @@ def suggested_depth(size: int) -> int:
 
 
 def suggested_candidate_limit(size: int) -> int:
+    # Gợi ý số ứng viên mỗi lớp để cân bằng chất lượng và tốc độ.
+
     if size <= 5:
         return size * size
     if size <= 8:
@@ -66,57 +74,59 @@ def suggested_candidate_limit(size: int) -> int:
 
 
 def main() -> None:
-    print("=== AI CO CARO (MINIMAX + ALPHA-BETA + HEURISTIC) ===")
+    # Điểm vào chế độ CLI: nhận cấu hình, chạy vòng lặp ván đấu và điều phối lượt chơi.
+
+    print("=== AI CỜ CARO (GBFS + MINIMAX + ALPHA-BETA + HEURISTIC) ===")
     size = read_int(
-        f"Kich thuoc ban co (n x n, {MIN_BOARD_SIZE}-{MAX_BOARD_SIZE})",
+        f"Kích thước bàn cờ (n x n, {MIN_BOARD_SIZE}-{MAX_BOARD_SIZE})",
         default=10,
         min_value=MIN_BOARD_SIZE,
         max_value=MAX_BOARD_SIZE,
     )
     win_len_default = 3 if size <= 3 else 5
     win_len = read_int(
-        "So quan lien tiep de thang",
+        "Số quân liên tiếp để thắng",
         default=win_len_default,
         min_value=MIN_BOARD_SIZE,
         max_value=size,
     )
     depth = read_int(
-        "Do sau tim kiem cho AI",
+        "Độ sâu tìm kiếm cho AI",
         default=suggested_depth(size),
         min_value=1,
         max_value=10,
     )
     max_candidates = read_int(
-        "So nuoc ung vien toi da moi lop",
+        "Số nước ứng viên tối đa mỗi lớp",
         default=suggested_candidate_limit(size),
         min_value=4,
         max_value=size * size,
     )
     max_time_ms = read_int(
-        "Gioi han thoi gian moi nuoc AI (ms)",
+        "Giới hạn thời gian mỗi nước AI (ms)",
         default=300,
         min_value=50,
         max_value=5000,
     )
 
-    first = input("Ban muon di truoc? (y/n) [y]: ").strip().lower()
+    first = input("Bạn muốn đi trước? (y/n) [y]: ").strip().lower()
     human_turn = first != "n"
 
     game = CaroGame(size=size, win_len=win_len)
     last_move: Optional[Move] = None
 
     while True:
-        print("\nBan co hien tai:")
+        print("\nBàn cờ hiện tại:")
         game.print_board()
 
         winner = game.check_winner(last_move)
         if winner is not None or game.is_full():
             if winner == AI_MARK:
-                print("\nAI thang.")
+                print("\nAI thắng.")
             elif winner == HUMAN_MARK:
-                print("\nBan thang.")
+                print("\nBạn thắng.")
             else:
-                print("\nHoa.")
+                print("\nHòa.")
             break
 
         if human_turn:
@@ -124,7 +134,7 @@ def main() -> None:
             game.make_move(move, HUMAN_MARK)
             last_move = move
         else:
-            print("\nAI dang tinh toan...")
+            print("\nAI đang tính toán...")
             move = ai_best_move(
                 game,
                 depth=depth,
@@ -133,6 +143,6 @@ def main() -> None:
             )
             game.make_move(move, AI_MARK)
             last_move = move
-            print(f"AI danh tai: hang {move.row + 1}, cot {move.col + 1}")
+            print(f"AI đánh tại: hàng {move.row + 1}, cột {move.col + 1}")
 
         human_turn = not human_turn

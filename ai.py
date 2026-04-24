@@ -9,38 +9,58 @@ from heuristics import evaluate_board, terminal_utility
 
 
 class SearchTimeout(Exception):
+    # Ngoại lệ nội bộ dùng để dừng tìm kiếm khi hết ngân sách thời gian.
     pass
 
 
-# Lookup table: trang thai -> nuoc di tot nhat da tung tinh truoc do.
+# Bộ nhớ đệm nhanh theo trạng thái bàn cờ hiện tại.
+# Mục tiêu là tránh lặp lại một lượt tìm kiếm khi người chơi quay lại cùng trạng thái.
 STATE_BEST_MOVE_CACHE: Dict[str, Move] = {}
 
 
-def order_moves(
+def _greedy_move_score(
+    game: CaroGame,
+    move: Move,
+    player: str,
+    opponent: str,
+) -> int:
+    # Tính điểm tham lam cục bộ cho một nước đi dùng ở tầng GBFS.
+    # Quy tắc chấm điểm ưu tiên:
+    # 1) Nước đi thắng ngay luôn được điểm rất cao.
+    # 2) Các trạng thái có lợi theo heuristic được ưu tiên hơn.
+    # 3) Nếu nước đi đồng thời chặn một mối đe dọa tức thì của đối thủ thì cộng thưởng.
+
+    # GBFS dùng điểm heuristic cục bộ để ưu tiên nhánh hứa hẹn nhất trước.
+    game.make_move(move, player)
+    try:
+        if game.check_winner(move) == player:
+            return INF // 4
+        score = evaluate_board(game)
+        if player == HUMAN_MARK:
+            score = -score
+
+        # Ưu tiên thêm nếu nước đi hiện tại đồng thời chặn một nước thắng trực tiếp của đối thủ.
+        game.make_move(move, opponent)
+        try:
+            if game.check_winner(move) == opponent:
+                score += INF // 8
+        finally:
+            game.undo_move(move)
+        return score
+    finally:
+        game.undo_move(move)
+
+
+def gbfs_rank_moves(
     game: CaroGame,
     moves: Sequence[Move],
     player: str,
     opponent: str,
     maximizing: bool,
 ) -> List[Move]:
-    scored: List[Tuple[int, Move]] = []
-    for move in moves:
-        game.make_move(move, player)
-        if game.check_winner(move) == player:
-            move_score = INF // 4
-        else:
-            move_score = evaluate_board(game)
-        game.undo_move(move)
+    # Sắp xếp danh sách nước đi theo điểm tham lam để giảm số nhánh cần duyệt sâu.
 
-        if player == HUMAN_MARK:
-            move_score = -move_score
-
-        game.make_move(move, opponent)
-        if game.check_winner(move) == opponent:
-            move_score += INF // 8
-        game.undo_move(move)
-
-        scored.append((move_score, move))
+    scored: List[Tuple[int, Move]] = [(_greedy_move_score(game, move, player, opponent), move) for move in moves]
 
     scored.sort(key=lambda x: x[0], reverse=maximizing)
     return [mv for _, mv in scored]
@@ -57,15 +77,20 @@ def minimax(
     max_candidates: int,
     deadline: Optional[float],
 ) -> int:
+    # Minimax có cắt tỉa Alpha-Beta và giới hạn thời gian theo deadline.
+    # Hàm dùng thêm transposition table để tái sử dụng kết quả ở các trạng thái lặp lại.
+
     if deadline is not None and perf_counter() >= deadline:
         raise SearchTimeout()
 
+    # Cắt sớm ở trạng thái kết thúc hoặc khi đã chạm độ sâu giới hạn.
     terminal_value = terminal_utility(game, depth, last_move)
     if terminal_value is not None:
         return terminal_value
     if depth == 0:
         return evaluate_board(game)
 
+    # Bảng chuyển vị giúp tránh tính lại cùng một trạng thái ở cùng vai trò lượt đi.
     key = (game.serialize(), maximizing)
     cached = transposition.get(key)
     if cached is not None:
@@ -73,6 +98,7 @@ def minimax(
         if cached_depth >= depth:
             return cached_value
 
+    # Phân vai theo lượt đi hiện tại để dùng cùng một thân hàm cho cả hai phía.
     if maximizing:
         value = -INF
         player = AI_MARK
@@ -83,14 +109,17 @@ def minimax(
         opponent = AI_MARK
 
     moves = game.get_candidate_moves(radius=1)
-    moves = order_moves(game, moves, player, opponent, maximizing)
+    # GBFS chỉ giữ lại và sắp xếp những nước hứa hẹn nhất trước khi Minimax duyệt sâu.
+    moves = gbfs_rank_moves(game, moves, player, opponent, maximizing)
     if len(moves) > max_candidates:
         moves = moves[:max_candidates]
 
+    # Gắn biến cục bộ giúp giảm lookup attribute trong vòng lặp sâu.
     make_move = game.make_move
     undo_move = game.undo_move
 
     if maximizing:
+        # Nhánh MAX: AI cố gắng đẩy điểm lên cao nhất.
         for move in moves:
             make_move(move, player)
             try:
@@ -112,6 +141,7 @@ def minimax(
             if beta <= alpha:
                 break
     else:
+        # Nhánh MIN: giả lập đối thủ luôn chọn phương án bất lợi nhất cho AI.
         for move in moves:
             make_move(move, player)
             try:
@@ -143,13 +173,22 @@ def ai_best_move(
     max_candidates: int,
     max_time_ms: Optional[int] = None,
 ) -> Move:
+    # Chọn nước đi tốt nhất cho AI bằng chiến lược GBFS + Minimax theo iterative deepening.
+    # Quy trình:
+    # 1) Lấy danh sách ứng viên gần vùng đã có quân.
+    # 2) Dùng GBFS sắp xếp/lọc ứng viên.
+    # 3) Duyệt sâu dần từ 1..depth, dừng sớm nếu hết thời gian.
+    # 4) Giữ lại phương án tốt nhất đã hoàn thành ở độ sâu gần nhất.
+
     state_key = game.serialize()
     cached_move = STATE_BEST_MOVE_CACHE.get(state_key)
     if cached_move is not None and game.is_valid_move(cached_move):
+        # Cache theo trạng thái giúp phản hồi tức thì khi bàn cờ lặp lại.
         return cached_move
 
     candidates = game.get_candidate_moves(radius=1)
-    candidates = order_moves(game, candidates, AI_MARK, HUMAN_MARK, maximizing=True)
+    # Tầng GBFS: chấm điểm toàn bộ nước ứng viên rồi chỉ đưa nhóm tốt nhất vào vòng Minimax.
+    candidates = gbfs_rank_moves(game, candidates, AI_MARK, HUMAN_MARK, maximizing=True)
     if len(candidates) > max_candidates:
         candidates = candidates[:max_candidates]
 
@@ -158,6 +197,7 @@ def ai_best_move(
     cache: Dict[Tuple[str, bool], Tuple[int, int]] = {}
 
     for current_depth in range(1, depth + 1):
+        # Luôn thử lại từ nước tốt nhất hiện tại trước để tăng cơ hội giữ được phương án tốt trong giới hạn thời gian.
         if best_move in candidates:
             candidates = [best_move] + [mv for mv in candidates if mv != best_move]
 
@@ -189,6 +229,7 @@ def ai_best_move(
                     best_score = score
                     depth_best_move = move
         except SearchTimeout:
+            # Khi timeout, giữ kết quả của độ sâu trước đó thay vì trả về ngẫu nhiên.
             break
 
         best_move = depth_best_move

@@ -19,26 +19,43 @@ def terminal_utility(game: CaroGame, depth: int, last_move: Optional[Move]) -> O
     return None
 
 
-def line_score(ai_count: int, human_count: int, win_len: int) -> int:
-    # Chấm điểm một cửa sổ win_len ô theo nguyên tắc tấn công/phòng thủ.
-    # Nếu hai bên cùng xuất hiện trong cửa sổ thì cửa sổ đó bị khóa, không có giá trị mở rộng.
+def run_score(length: int, open_ends: int, win_len: int, ai_run: bool) -> int:
+    # Chấm điểm một chuỗi liên tiếp có xét số đầu mở (open-end).
+    # Mục tiêu: ưu tiên open-four/open-three vì đây là dạng thế cờ tạo áp lực chiến thuật mạnh.
 
-    if ai_count > 0 and human_count > 0:
-        return 0
-    if ai_count == 0 and human_count == 0:
+    if length <= 0:
         return 0
 
-    # Trọng số tăng theo cấp số mũ để chuỗi dài hơn được ưu tiên vượt trội.
-    weights = [0] + [10**i for i in range(1, win_len)] + [10**(win_len + 1)]
-    if ai_count > 0:
-        return weights[ai_count]
-    # Phạt phía đối thủ nhỉnh hơn một chút để AI có xu hướng phòng thủ an toàn.
-    return -int(weights[human_count] * 1.15)
+    if length >= win_len:
+        value = 10 ** (win_len + 2)
+    else:
+        base = 10**length
+        if open_ends == 2:
+            value = base * 3
+        elif open_ends == 1:
+            value = base
+        else:
+            value = max(1, base // 4)
+
+        # open-four hai đầu mở là thế thắng sau 2 lượt nếu đối thủ không chặn tối ưu.
+        if length == win_len - 1 and open_ends == 2:
+            value *= 6
+        # open-three hai đầu mở là mầm bẫy 2 nước quan trọng.
+        elif length == win_len - 2 and open_ends == 2:
+            value *= 3
+        elif length == win_len - 1 and open_ends == 1:
+            value *= 3
+
+    if ai_run:
+        return int(value)
+
+    # Trừng phạt chuỗi của đối thủ mạnh hơn một chút để AI giữ phòng thủ chủ động.
+    return -int(value * 1.2)
 
 
 def evaluate_board(game: CaroGame) -> int:
     # Đánh giá toàn cục một trạng thái bàn cờ khi chưa chạm điều kiện kết thúc.
-    # Hàm quét 4 hướng cơ bản và cộng thêm thiên vị trung tâm để ổn định thế khai cuộc.
+    # Hàm quét cụm liên tiếp theo 4 hướng và chấm điểm dựa trên open-end/open-four.
 
     # Trạng thái thắng/thua được ưu tiên tuyệt đối để Minimax không cần đọc sâu hơn.
     winner = game.check_winner()
@@ -52,29 +69,34 @@ def evaluate_board(game: CaroGame) -> int:
     board = game.board
     score = 0
 
-    # Quét theo hàng ngang.
+    directions = ((1, 0), (0, 1), (1, 1), (1, -1))
+
+    # Quét theo cụm liên tiếp; mỗi cụm chỉ chấm đúng 1 lần bằng cách nhận diện điểm bắt đầu run.
     for r in range(size):
-        for c in range(size - win_len + 1):
-            window = [board[r][c + k] for k in range(win_len)]
-            score += line_score(window.count(AI_MARK), window.count(HUMAN_MARK), win_len)
+        for c in range(size):
+            mark = board[r][c]
+            if mark == EMPTY:
+                continue
 
-    # Quét theo cột dọc.
-    for c in range(size):
-        for r in range(size - win_len + 1):
-            window = [board[r + k][c] for k in range(win_len)]
-            score += line_score(window.count(AI_MARK), window.count(HUMAN_MARK), win_len)
+            for dr, dc in directions:
+                prev_r, prev_c = r - dr, c - dc
+                if 0 <= prev_r < size and 0 <= prev_c < size and board[prev_r][prev_c] == mark:
+                    continue
 
-    # Quét chéo chính (từ trái trên xuống phải dưới).
-    for r in range(size - win_len + 1):
-        for c in range(size - win_len + 1):
-            window = [board[r + k][c + k] for k in range(win_len)]
-            score += line_score(window.count(AI_MARK), window.count(HUMAN_MARK), win_len)
+                length = 0
+                cur_r, cur_c = r, c
+                while 0 <= cur_r < size and 0 <= cur_c < size and board[cur_r][cur_c] == mark:
+                    length += 1
+                    cur_r += dr
+                    cur_c += dc
 
-    # Quét chéo phụ (từ phải trên xuống trái dưới).
-    for r in range(size - win_len + 1):
-        for c in range(win_len - 1, size):
-            window = [board[r + k][c - k] for k in range(win_len)]
-            score += line_score(window.count(AI_MARK), window.count(HUMAN_MARK), win_len)
+                open_ends = 0
+                if 0 <= prev_r < size and 0 <= prev_c < size and board[prev_r][prev_c] == EMPTY:
+                    open_ends += 1
+                if 0 <= cur_r < size and 0 <= cur_c < size and board[cur_r][cur_c] == EMPTY:
+                    open_ends += 1
+
+                score += run_score(length, open_ends, win_len, ai_run=(mark == AI_MARK))
 
     # Hơi ưu tiên quân ở gần trung tâm để AI chơi chủ động hơn ở giai đoạn đầu ván.
     center = (size - 1) / 2.0

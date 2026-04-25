@@ -91,6 +91,23 @@ TACTICAL_CASES: Tuple[TacticalCase, ...] = (
         max_candidates=16,
         max_time_ms=850,
     ),
+    TacticalCase(
+        name="AI tạo bẫy 2 nước open-four",
+        size=10,
+        win_len=5,
+        moves=(
+            (5, 3, AI_MARK),
+            (5, 4, AI_MARK),
+            (5, 6, AI_MARK),
+            (4, 4, HUMAN_MARK),
+            (6, 4, HUMAN_MARK),
+            (4, 6, HUMAN_MARK),
+        ),
+        expected={(5, 5)},
+        depth=5,
+        max_candidates=16,
+        max_time_ms=850,
+    ),
 )
 
 

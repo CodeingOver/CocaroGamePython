@@ -10,7 +10,7 @@
 - `tkinter` cho giao diện đồ họa
 - Chạy bằng giao diện GUI
 - Thuật toán tìm kiếm: GBFS, Minimax, Alpha-Beta
-- Heuristic đánh giá cục bộ bàn cờ
+- Heuristic đánh giá cục bộ bàn cờ theo cụm liên tiếp và số đầu mở (open-end/open-four)
 - Script benchmark hiệu năng đa kích thước bàn cờ, xuất báo cáo Markdown/CSV
 - Script kiểm thử chiến thuật cho các thế cờ bắt buộc
 
@@ -43,7 +43,7 @@ Cocaro/
 
 - Tầng giao diện nhận tương tác từ người chơi.
 - Tầng game xử lý hợp lệ nước đi, undo/redo và kiểm tra thắng.
-- Tầng heuristic đánh giá giá trị của trạng thái hiện tại.
+- Tầng heuristic đánh giá giá trị của trạng thái hiện tại, nhấn mạnh các thế mở mạnh như open-three/open-four.
 - Tầng AI dùng GBFS để sắp xếp ứng viên theo heuristic cục bộ, sau đó gọi Minimax + Alpha-Beta để quyết định.
 - Tầng kiểm chứng kỹ thuật gồm benchmark và tactical tests để xác nhận claim hiệu năng và chiến thuật.
 
@@ -52,7 +52,7 @@ Cocaro/
 1. Người chơi nhập nước đi trên GUI.
 2. `game.py` kiểm tra tính hợp lệ và cập nhật bàn cờ.
 3. Khi đến lượt AI, `ai.py` sinh các nước đi ứng viên gần vị trí đã đánh.
-4. GBFS chấm điểm ứng viên để giữ lại các nước hứa hẹn nhất.
+4. GBFS chấm điểm ứng viên (ưu tiên các thế mở hai đầu như open-three/open-four) để giữ lại các nước hứa hẹn nhất.
 5. Minimax + Alpha-Beta duyệt sâu trên tập ứng viên đã lọc.
 6. Nước đi tốt nhất được trả về cho giao diện và cập nhật lên bàn cờ.
 7. Khi cần nghiệm thu đề tài, `benchmark.py` và `tactical_tests.py` chạy độc lập để sinh bằng chứng định lượng.

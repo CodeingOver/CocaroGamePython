@@ -14,3 +14,4 @@
 - Cập nhật lại tài liệu kiến trúc và hướng dẫn chạy để phản ánh việc bỏ CLI và benchmark đa kích thước bàn cờ.
 - Sửa lỗi `TclError` trong GUI khi ô `Spinbox` bị để trống: thêm hàm đọc số an toàn và kiểm tra hợp lệ trước khi áp dụng cấu hình tùy chỉnh, bắt đầu ván mới, hoặc để AI tính nước đi.
 - Sửa hành vi AI có xu hướng nối thẳng thiếu phản ứng theo đúng pipeline đề tài GBFS + Minimax: tinh chỉnh chấm điểm GBFS, cải thiện sinh ứng viên và cơ chế ordering/cache theo độ sâu, không tách thêm tầng thuật toán ngoài GBFS/Minimax.
+- Tinh chỉnh lại hướng chấm điểm GBFS để lượt đối thủ được xếp nhánh đúng theo góc nhìn Minimax (tránh AI phản ứng kém do đảo dấu sai), đồng thời mở rộng khóa cache theo `max_time_ms` để giảm tái dùng nước đi không phù hợp cấu hình.

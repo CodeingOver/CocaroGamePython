@@ -15,7 +15,7 @@ class SearchTimeout(Exception):
 
 # Bộ nhớ đệm nhanh theo trạng thái bàn cờ hiện tại.
 # Mục tiêu là tránh lặp lại một lượt tìm kiếm khi người chơi quay lại cùng trạng thái.
-STATE_BEST_MOVE_CACHE: Dict[Tuple[str, int, int], Move] = {}
+STATE_BEST_MOVE_CACHE: Dict[Tuple[str, int, int, int], Move] = {}
 
 
 def _greedy_move_score(
@@ -37,9 +37,8 @@ def _greedy_move_score(
             # Cùng một sự kiện thắng ngay nhưng dấu điểm phải phụ thuộc phía đang xét.
             return INF // 4 if player == AI_MARK else -(INF // 4)
 
+        # score luôn được giữ theo góc nhìn AI để ordering MIN/MAX nhất quán.
         score = evaluate_board(game)
-        if player == HUMAN_MARK:
-            score = -score
 
         # Ưu tiên thêm nếu nước đi hiện tại đồng thời chặn một nước thắng trực tiếp của đối thủ.
         game.make_move(move, opponent)
@@ -184,7 +183,8 @@ def ai_best_move(
     # 3) Duyệt sâu dần từ 1..depth, dừng sớm nếu hết thời gian.
     # 4) Giữ lại phương án tốt nhất đã hoàn thành ở độ sâu gần nhất.
 
-    state_key = (game.serialize(), depth, max_candidates)
+    # max_time_ms tham gia khóa cache để tránh dùng lại kết quả của cấu hình thời gian khác.
+    state_key = (game.serialize(), depth, max_candidates, max_time_ms or -1)
     cached_move = STATE_BEST_MOVE_CACHE.get(state_key)
     if cached_move is not None and game.is_valid_move(cached_move):
         # Cache theo trạng thái + tham số tìm kiếm giúp tránh trả về nước cũ của cấu hình khác.

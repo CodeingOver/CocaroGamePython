@@ -1,136 +1,105 @@
-# Kiến Trúc Hệ Thống
+# Kiến Trúc Hệ Thống Cờ Caro AI
 
-## 1. Tổng quan hệ thống
+## 1. Tổng quan hệ thống (System Overview)
+Dự án là một hệ thống trò chơi Cờ Caro tích hợp AI đối kháng. Mục tiêu cốt lõi là xây dựng một engine AI có khả năng xử lý trên các bàn cờ kích thước lớn mà vẫn đảm bảo độ trễ thấp (dưới 2 giây/lượt). Hệ thống kết hợp các thuật toán tìm kiếm cổ điển với kỹ thuật lọc ứng viên hiện đại để tối ưu hóa không gian trạng thái.
 
-Ứng dụng là trò chơi Cờ Caro cho phép người chơi đấu với AI. Luồng chính gồm giao diện đồ họa, logic luật chơi, mô-đun đánh giá bàn cờ và mô-đun tìm kiếm nước đi. AI dùng GBFS để lọc ứng viên và Minimax + Alpha-Beta để chọn nước đi chiến lược.
+## 2. Công nghệ sử dụng (Tech Stack)
+- **Ngôn ngữ lập trình**: Python 3.
+- **Giao diện (GUI)**: Tkinter (Python Standard Library).
+- **Thuật toán AI**: 
+    - **GBFS (Greedy Best-First Search)**: Sàng lọc và sắp xếp các nước đi tiềm năng.
+    - **Minimax**: Thuật toán ra quyết định đối kháng.
+    - **Alpha-Beta Pruning**: Cắt tỉa các nhánh không triển vọng để tăng tốc độ duyệt.
+- **Công cụ đo lường**: Custom Benchmark script (CSV/Markdown export).
 
-## 2. Công nghệ sử dụng
-
-- Python 3
-- `tkinter` cho giao diện đồ họa
-- Chạy bằng giao diện GUI
-- Thuật toán tìm kiếm: GBFS, Minimax, Alpha-Beta
-- Heuristic đánh giá cục bộ bàn cờ theo cụm liên tiếp và số đầu mở (open-end/open-four)
-- Script benchmark hiệu năng đa kích thước bàn cờ, xuất báo cáo Markdown/CSV
-- Script kiểm thử chiến thuật cho các thế cờ bắt buộc
-
-## 3. Cấu trúc thư mục
-
+## 3. Cấu trúc thư mục (Folder Structure)
 ```text
 Cocaro/
-├─ ai.py
-├─ benchmark.py
-├─ constants.py
-├─ game.py
-├─ gui.py
-├─ heuristics.py
-├─ main.py
-├─ tactical_tests.py
-└─ docs/
-    ├─ benchmarks/
-    ├─ CHANGELOG.md
-    └─ architecture.md
+├── main.py              # Điểm khởi đầu ứng dụng (Entry Point)
+├── gui.py               # Xử lý giao diện người dùng và sự kiện đồ họa
+├── game.py              # Logic cốt lõi: luật chơi, kiểm tra thắng/thua
+├── ai.py                # Engine AI: Minimax, Alpha-Beta, GBFS
+├── heuristics.py        # Hàm đánh giá trạng thái bàn cờ (Score calculation)
+├── constants.py         # Quản lý hằng số hệ thống
+├── benchmark.py         # Công cụ đo lường hiệu năng AI
+├── tactical_tests.py    # Bộ kiểm thử các tình huống chiến thuật
+└── docs/                # Thư mục tài liệu
+    ├── architecture.md  # Tài liệu kiến trúc (File này)
+    ├── CHANGELOG.md     # Nhật ký thay đổi
+    └── benchmarks/      # Kết quả đo lường hiệu năng
 ```
 
-- `ai.py`: điều phối chọn nước đi cho AI.
-- `game.py`: mô hình bàn cờ và luật thắng.
-- `heuristics.py`: chấm điểm trạng thái bàn cờ.
-- `gui.py`: giao diện trực quan và các mức độ khó.
-- `benchmark.py`: đo độ trễ AI theo nhiều cấu hình và nhiều kích thước bàn cờ.
-- `tactical_tests.py`: kiểm tra độ chính xác chiến thuật trong các tình huống bắt buộc.
+## 4. Kiến trúc thành phần (Component Architecture)
+Hệ thống được chia thành 3 lớp chính:
+1. **Lớp Giao diện (Presentation Layer - `gui.py`)**: Nhận tương tác chuột, hiển thị bàn cờ và quản lý luồng hội thoại giữa người và máy.
+2. **Lớp Logic (Business Logic Layer - `game.py`, `constants.py`)**: Điều phối luật chơi Caro, quản lý trạng thái bàn cờ và lịch sử nước đi.
+3. **Lớp Trí tuệ nhân tạo (AI Engine Layer - `ai.py`, `heuristics.py`)**: Thành phần quan trọng nhất, thực hiện tính toán nước đi tối ưu dựa trên dữ liệu từ lớp Logic.
 
-## 4. Kiến trúc thành phần
+## 5. Luồng dữ liệu (Data Flow)
+1. **Người chơi** thực hiện click trên lưới bàn cờ.
+2. **`gui.py`** gửi yêu cầu kiểm tra tính hợp lệ đến **`game.py`**.
+3. Nếu hợp lệ, bàn cờ cập nhật và gửi tín hiệu đến **`ai.py`** để yêu cầu AI phản hồi.
+4. **`ai.py`** gọi `get_candidate_moves` từ **`game.py`** để lấy danh sách các ô trống xung quanh vùng đang đánh.
+5. **`heuristics.py`** chấm điểm cục bộ cho từng ứng viên (GBFS).
+6. Danh sách ứng viên tốt nhất được đưa vào **Minimax + Alpha-Beta** để tìm kiếm sâu hơn.
+7. Nước đi tối ưu được trả về, **`gui.py`** vẽ quân cờ của AI lên màn hình.
 
-- Tầng giao diện nhận tương tác từ người chơi.
-- Tầng game xử lý hợp lệ nước đi, undo/redo và kiểm tra thắng.
-- Tầng heuristic đánh giá giá trị của trạng thái hiện tại, nhấn mạnh các thế mở mạnh như open-three/open-four.
-- Tầng AI dùng GBFS để sắp xếp ứng viên theo heuristic cục bộ, sau đó gọi Minimax + Alpha-Beta để quyết định.
-- Tầng kiểm chứng kỹ thuật gồm benchmark và tactical tests để xác nhận claim hiệu năng và chiến thuật.
+## 6. Cơ chế bảo mật (Security Mechanisms)
+- **Validation**: Kiểm tra nghiêm ngặt tính hợp lệ của nước đi (tránh ghi đè, đánh ngoài biên).
+- **Time Boxing**: AI được giới hạn thời gian tính toán (timeout) để tránh làm treo ứng dụng khi gặp bài toán quá phức tạp.
+- **Input Sanitization**: Xử lý ngoại lệ khi người dùng nhập thông số bàn cờ không hợp lệ trong các ô cấu hình.
 
-## 5. Luồng dữ liệu
-
-1. Người chơi nhập nước đi trên GUI.
-2. `game.py` kiểm tra tính hợp lệ và cập nhật bàn cờ.
-3. Khi đến lượt AI, `ai.py` sinh các nước đi ứng viên gần vị trí đã đánh.
-4. GBFS chấm điểm ứng viên (ưu tiên các thế mở hai đầu như open-three/open-four) để giữ lại các nước hứa hẹn nhất.
-5. Minimax + Alpha-Beta duyệt sâu trên tập ứng viên đã lọc.
-6. Nước đi tốt nhất được trả về cho giao diện và cập nhật lên bàn cờ.
-7. Khi cần nghiệm thu đề tài, `benchmark.py` và `tactical_tests.py` chạy độc lập để sinh bằng chứng định lượng.
-
-## 6. Cơ chế bảo mật
-
-Ứng dụng là game cục bộ nên không có xác thực người dùng hay mã hóa dữ liệu. Cơ chế an toàn chính là kiểm tra nước đi hợp lệ, tránh truy cập ngoài phạm vi bàn cờ và giới hạn thời gian tìm kiếm để không làm treo giao diện.
-
-## 7. APIs / Routes cốt lõi
-
-Ứng dụng không có API mạng. Các điểm vào và hàm lõi gồm:
-
-- `main.py`: điểm vào ứng dụng GUI.
-- `gui.py`: điều khiển ván đấu bằng giao diện.
-- `ai.py`: `ai_best_move`, `minimax`, `gbfs_rank_moves`.
-- `game.py`: `make_move`, `undo_move`, `check_winner`, `get_candidate_moves`.
-- `benchmark.py`: `run_profile`, `summarize`, `write_markdown`.
-- `tactical_tests.py`: `run_case`, `main`.
+## 7. APIs / Routes cốt lõi (Core APIs/Routes)
+Các hàm quan trọng điều phối toàn bộ hệ thống:
+- `gui_main()`: Khởi chạy vòng lặp giao diện.
+- `ai_best_move(board, depth, time_limit)`: Hàm chính để AI trả về nước đi tốt nhất.
+- `evaluate_board(board, player)`: Tính toán điểm số chiến lược cho trạng thái hiện tại.
+- `check_winner(board)`: Xác định ván đấu đã kết thúc hay chưa.
 
 ## 8. Sơ đồ trực quan (Visual Diagrams - Mermaid.js)
 
+### Tổng quan kiến trúc
 ```mermaid
 graph TD
-    A[main.py] --> B[gui.py]
-    B --> D[game.py]
-    D --> E[heuristics.py]
-    E --> F[ai.py]
-    F --> D
-    G[benchmark.py] --> F
-    G --> D
-    H[tactical_tests.py] --> F
-    H --> D
+    User((Người chơi)) -->|Tương tác| GUI[gui.py]
+    GUI -->|Cập nhật| Game[game.py]
+    Game -->|Cung cấp trạng thái| AI[ai.py]
+    AI -->|Yêu cầu đánh giá| Heuristic[heuristics.py]
+    Heuristic -->|Trả về điểm số| AI
+    AI -->|Quyết định nước đi| Game
+    Game -->|Phản hồi| GUI
+    GUI -->|Hiển thị| User
 ```
 
+### Luồng xử lý nước đi AI
 ```mermaid
 sequenceDiagram
-    participant P as Người chơi
-    participant U as Giao diện
-    participant G as Game
-    participant A as AI
+    participant G as GUI
+    participant A as AI Engine
     participant H as Heuristic
-
-    P->>U: Đánh nước đi
-    U->>G: make_move()
-    G-->>U: Trạng thái bàn cờ
-    U->>A: ai_best_move()
-    A->>G: get_candidate_moves()
-    A->>H: evaluate_board()
-    A->>A: GBFS lọc ứng viên
-    A->>A: Minimax + Alpha-Beta
-    A-->>U: Nước đi tốt nhất
-    U->>G: make_move() cho AI
+    participant M as Minimax
+    
+    G->>A: Yêu cầu tính nước đi (ai_best_move)
+    A->>H: Chấm điểm ứng viên (GBFS)
+    H-->>A: Danh sách ứng viên đã xếp hạng
+    A->>M: Duyệt sâu tập ứng viên tốt nhất
+    M->>M: Alpha-Beta Pruning
+    M-->>A: Giá trị tối ưu
+    A-->>G: Trả về tọa độ (row, col)
 ```
 
-```mermaid
-sequenceDiagram
-    participant V as Người kiểm chứng
-    participant B as benchmark.py
-    participant A as AI
-    participant G as Game
-
-    V->>B: Chạy benchmark theo cấu hình
-    B->>G: Nạp trạng thái mẫu
-    B->>A: ai_best_move(...)
-    A-->>B: Nước đi + thời gian xử lý
-    B-->>V: Báo cáo Markdown/CSV
-```
-
+### Mô hình dữ liệu bàn cờ
 ```mermaid
 erDiagram
-    BOARD ||--o{ MOVE : contains
+    BOARD ||--o{ CELL : contains
     BOARD {
-        int size
-        int win_len
+        int width
+        int height
+        int win_condition
     }
-    MOVE {
+    CELL {
         int row
         int col
-        string player
+        string mark "X/O/EMPTY"
     }
 ```

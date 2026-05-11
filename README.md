@@ -1,43 +1,54 @@
-# Cờ Caro AI
+# Cờ Caro AI - Hệ thống Trí tuệ Nhân tạo thông minh
 
-Ứng dụng Cờ Caro cho phép người chơi đấu với AI ở nhiều mức độ khó. AI dùng tầng GBFS để xếp hạng và lọc ứng viên theo đánh giá cục bộ (bao gồm open-end/open-four), sau đó Minimax + Alpha-Beta duyệt sâu để chọn nước đi tối ưu trong giới hạn thời gian.
+## 1. Tên dự án & Giới thiệu
+**Cờ Caro AI** là một ứng dụng trò chơi Cờ Caro (Gomoku) được tích hợp trí tuệ nhân tạo hiện đại. Ứng dụng không chỉ là một trò chơi giải trí mà còn là một sản phẩm thực nghiệm các thuật toán tìm kiếm và tối ưu hóa trong AI, bao gồm GBFS (Greedy Best-First Search), Minimax kết hợp cắt tỉa Alpha-Beta và các kỹ thuật Heuristic tiên tiến.
 
-## Mục tiêu nghiệm thu đề tài
+## 2. Tính năng chính
+- **Trí tuệ nhân tạo thông minh**: AI sử dụng sự kết hợp giữa GBFS để sàng lọc nước đi và Minimax để duyệt sâu, đảm bảo phản hồi nhanh chóng và nước đi chiến thuật.
+- **Tùy chỉnh linh hoạt**: Người chơi có thể tùy chỉnh kích thước bàn cờ (từ 3x3 đến 30x30) và độ dài chuỗi thắng (mặc định là 5).
+- **Giao diện trực quan**: Xây dựng bằng thư viện Tkinter, hỗ trợ hiển thị rõ nét, thao tác mượt mà và các mức độ khó khác nhau.
+- **Hệ thống Benchmark**: Tích hợp công cụ đo lường hiệu năng, tự động xuất báo cáo dưới dạng Markdown và CSV.
+- **Kiểm thử chiến thuật**: Bộ công cụ `tactical_tests.py` giúp xác minh khả năng nhận diện các thế cờ hiểm hóc (bẫy, chặn 4, thắng ngay).
 
-- Kiến trúc: GBFS lọc ứng viên, Minimax + Alpha-Beta duyệt sâu.
-- Hiệu năng: kiểm chứng mốc nhỏ hơn hoặc bằng 2 giây/lượt trên bàn cờ tùy chỉnh bằng script benchmark.
-- Chiến thuật: kiểm tra các ca bắt buộc thắng/chặn bằng tactical tests.
+## 3. Yêu cầu hệ thống
+- **Ngôn ngữ**: Python 3.8 trở lên.
+- **Thư viện**: 
+  - `tkinter` (thường đi kèm mặc định với Python).
+  - `pathlib`, `shutil` (thư viện chuẩn).
+  - Không yêu cầu cài đặt thêm thư viện bên ngoài (Zero Dependencies).
 
-## Chạy chương trình
+## 4. Hướng dẫn cài đặt
+1. **Tải mã nguồn**:
+   ```bash
+   git clone https://github.com/your-username/Cocaro.git
+   cd Cocaro
+   ```
+2. **Kiểm tra Python**:
+   ```bash
+   python --version
+   ```
 
+## 5. Biến môi trường
+Dự án hiện tại chạy cục bộ và không yêu cầu cấu hình biến môi trường phức tạp. Các hằng số hệ thống được quản lý tập trung tại `constants.py`.
+
+## 6. Hướng dẫn chạy & Sử dụng
+
+### Chạy ứng dụng chính (GUI)
 ```bash
 python main.py
 ```
 
-Chạy benchmark hiệu năng:
-
+### Chạy Benchmark hiệu năng
+Để kiểm tra tốc độ phản hồi của AI trên nhiều kích thước bàn cờ:
 ```bash
 python benchmark.py --sizes 10,12,15 --win-len 5 --repeats 2
 ```
 
-Chạy kiểm thử chiến thuật:
-
+### Chạy Kiểm thử chiến thuật
+Để kiểm tra độ thông minh của AI trong các tình huống cụ thể:
 ```bash
 python tactical_tests.py
 ```
 
-Kết quả benchmark sẽ được xuất ra thư mục `docs/benchmarks/` gồm file `.md` và `.csv`.
-
-## Thành phần chính
-
-- `main.py`: điểm khởi động ứng dụng.
-- `gui.py`: giao diện đồ họa và các mức độ khó.
-- `ai.py`: tầng GBFS, Minimax, Alpha-Beta và giới hạn thời gian.
-- `heuristics.py`: hàm đánh giá bàn cờ.
-- `game.py`: logic luật chơi và sinh nước đi ứng viên.
-- `benchmark.py`: đo độ trễ phản hồi AI theo nhiều cấu hình và nhiều kích thước bàn cờ tùy chỉnh.
-- `tactical_tests.py`: xác minh các tình huống chiến thuật quan trọng (thắng ngay, chặn ngay).
-
-## Ghi chú
-
-AI được thiết kế để phản hồi nhanh trên bàn cờ lớn bằng cách sinh ứng viên theo bán kính thích nghi, chấm điểm heuristic theo thế mở hai đầu, rồi chỉ duyệt sâu vào các nhánh có điểm GBFS tốt nhất.
+---
+*Phát triển bởi Đội ngũ dự án Trí tuệ nhân tạo.*

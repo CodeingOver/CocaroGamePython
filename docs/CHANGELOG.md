@@ -8,6 +8,7 @@ Tất cả các thay đổi quan trọng đối với dự án này sẽ đượ
 - **Tài liệu hệ thống**:
     - Viết lại toàn bộ `README.md` với cấu trúc chuyên nghiệp, đầy đủ hướng dẫn cài đặt và sử dụng.
     - Cập nhật `docs/architecture.md` theo chuẩn 8 phần, bổ sung sơ đồ Mermaid (Flowchart, Sequence Diagram, ER Diagram) để trực quan hóa luồng dữ liệu và cấu trúc AI.
+    - Bổ sung `docs/algorithm_details.md` giải thích chi tiết các thuật toán GBFS, Minimax, Alpha-Beta và hàm đánh giá Heuristic.
 - **Tiêu chuẩn hóa**:
     - Chỉnh sửa ngôn ngữ trong toàn bộ tài liệu sang Tiếng Việt có dấu chuẩn ngữ pháp.
     - Đồng bộ hóa các thuật ngữ kỹ thuật (GBFS, Minimax, Alpha-Beta) xuyên suốt các tệp hướng dẫn.

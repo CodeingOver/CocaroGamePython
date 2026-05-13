@@ -389,11 +389,14 @@ def _greedy_move_score(game, move, player, opponent) -> int:
 #### 4.2. Xếp hạng và lọc `gbfs_rank_moves`
 
 ```python
-def gbfs_rank_moves(game, moves, player, opponent, maximizing) -> List[Move]:
-    scored = [
-        (_greedy_move_score(game, move, player, opponent), move)
-        for move in moves
-    ]
+def gbfs_rank_moves(game, moves, player, opponent, maximizing,
+                    deadline=None) -> List[Move]:
+    # deadline: dừng sắp xếp sớm nếu hết thời gian — tránh kẹt ở bàn cờ lớn
+    scored = []
+    for move in moves:
+        if deadline is not None and perf_counter() >= deadline:
+            raise SearchTimeout()
+        scored.append((_greedy_move_score(game, move, player, opponent), move))
     # MAX node → sắp xếp điểm GIẢM dần (nước tốt nhất lên trước)
     # MIN node → sắp xếp điểm TĂNG dần (nước bất lợi nhất cho AI lên trước)
     scored.sort(key=lambda x: x[0], reverse=maximizing)
@@ -445,52 +448,39 @@ def minimax(
     if maximizing:
         value = -INF
         player, opponent = AI_MARK, HUMAN_MARK
-
-        # GBFS lọc + sắp xếp ứng viên
-        moves = gbfs_rank_moves(game, game.get_candidate_moves(), player, opponent, True)
-        moves = moves[:max_candidates]  # Chỉ giữ top N nước tốt nhất
-
-        for move in moves:
-            game.make_move(move, player)
-            try:
-                score = minimax(game, depth-1, alpha, beta, False, move, transposition, max_candidates, deadline, stats, use_ab, use_gbfs)
-            finally:
-                game.undo_move(move)
-
-            value = max(value, score)
-            if use_ab:              # Chỉ cắt tỉa khi bật Alpha-Beta
-                alpha = max(alpha, value)
-                if beta <= alpha:   # ✂ CẮT TỈA Beta!
-                    stats.cutoffs += 1
-                    break
-```
-
-#### 5.3. Nhánh MIN (lượt người chơi)
-
-```python
     else:
         value = INF
         player, opponent = HUMAN_MARK, AI_MARK
 
-        moves = gbfs_rank_moves(game, game.get_candidate_moves(), player, opponent, False)
+    # Lấy ứng viên và chỉ sắp xếp GBFS ở các tầng nông (depth >= 2)
+    # giúp Alpha-Beta cắt tỉa tốt hơn mà không lãng phí ở lá cây
+    moves = game.get_candidate_moves(radius=1)
+    if use_gbfs and depth >= 2:
+        moves = gbfs_rank_moves(game, moves, player, opponent, maximizing, deadline)
+    if len(moves) > max_candidates:
         moves = moves[:max_candidates]
 
-        for move in moves:
-            game.make_move(move, player)
-            try:
-                score = minimax(game, depth-1, alpha, beta, True, move, transposition, max_candidates, deadline, stats, use_ab, use_gbfs)
-            finally:
-                game.undo_move(move)
+    for move in moves:
+        game.make_move(move, player)
+        try:
+            score = minimax(game, depth-1, alpha, beta, not maximizing,
+                            move, transposition, max_candidates, deadline, stats, use_ab, use_gbfs)
+        finally:
+            game.undo_move(move)
 
+        if maximizing:
+            value = max(value, score)
+        else:
             value = min(value, score)
-            if use_ab:              # Chỉ cắt tỉa khi bật Alpha-Beta
-                beta = min(beta, value)
-                if beta <= alpha:   # ✂ CẮT TỈA Alpha!
-                    stats.cutoffs += 1
-                    break
 
-    transposition[key] = value  # Lưu kết quả vào cache
-    return value
+        if use_ab:              # Chỉ cắt tỉa khi bật Alpha-Beta
+            if maximizing:
+                alpha = max(alpha, value)
+            else:
+                beta = min(beta, value)
+            if beta <= alpha:   # ✂ CẮT TỈA!
+                stats.cutoffs += 1
+                break
 ```
 
 **Minh họa cắt tỉa Alpha-Beta:**
@@ -517,51 +507,71 @@ def ai_best_move(
 ) -> Tuple[Move, SearchStats]:
     stats = SearchStats()
     start_time = perf_counter()
-    candidates = game.get_candidate_moves(radius=1)
-    
-    # ① Kiểm tra cache trạng thái toàn cục
-    state_key = (game.serialize(), depth, max_candidates, max_time_ms or -1)
+
+    # ① Kiểm tra cache — key gắn cả cờ thuật toán
+    state_key = (game.serialize(), depth, max_candidates, max_time_ms or -1, use_ab, use_gbfs)
     cached_move = STATE_BEST_MOVE_CACHE.get(state_key)
     if cached_move and game.is_valid_move(cached_move):
-        return cached_move, stats
+        dummy_stats = SearchStats(elapsed_ms=(perf_counter() - start_time) * 1000.0)
+        return cached_move, dummy_stats  # Trả về ngay nếu đã tính trước đó
+
+    candidates = game.get_candidate_moves(radius=1)
+    deadline = None if max_time_ms is None else perf_counter() + (max_time_ms / 1000.0)
+
+    # ② Tầng GBFS (chỉ chạy khi bật use_gbfs)
+    if use_gbfs:
+        try:
+            candidates = gbfs_rank_moves(game, candidates, AI_MARK, HUMAN_MARK,
+                                         maximizing=True, deadline=deadline)
+        except SearchTimeout:
+            candidates = list(candidates)  # Giữ nguyên nếu timeout trong khi rank
+    if len(candidates) > max_candidates:
+        candidates = candidates[:max_candidates]
 
     best_move = candidates[0]
-    deadline = perf_counter() + (max_time_ms / 1000.0) if max_time_ms else None
-    cache = {}
+    cache = {}  # Transposition table riêng cho lượt này
 
     # ③ Iterative Deepening: duyệt từ depth=1 đến depth=N
     for current_depth in range(1, depth + 1):
-        search_candidates = gbfs_rank_moves(game, candidates, AI_MARK, HUMAN_MARK, True)
-        search_candidates = search_candidates[:max_candidates]
+        # Re-rank ứng viên theo từng lớp để tránh lock-in
+        if use_gbfs:
+            try:
+                search_candidates = gbfs_rank_moves(game, candidates, AI_MARK, HUMAN_MARK,
+                                                    maximizing=True, deadline=deadline)
+            except SearchTimeout:
+                break
+        else:
+            search_candidates = list(candidates)
+
+        if len(search_candidates) > max_candidates:
+            search_candidates = search_candidates[:max_candidates]
 
         best_score = -INF
         depth_best_move = best_move
-
         try:
             for move in search_candidates:
                 if deadline and perf_counter() >= deadline:
                     raise SearchTimeout()
-
                 game.make_move(move, AI_MARK)
                 try:
-                    score = minimax(game, current_depth-1, -INF, INF, False, move, cache, max_candidates, deadline, stats, use_ab, use_gbfs)
+                    score = minimax(game, current_depth-1, -INF, INF, False,
+                                   move, cache, max_candidates, deadline, stats, use_ab, use_gbfs)
                 finally:
                     game.undo_move(move)
-
                 if score > best_score:
                     best_score = score
                     depth_best_move = move
-
         except SearchTimeout:
             break  # Hết thời gian → giữ kết quả từ depth trước
 
-        best_move = depth_best_move  # Cập nhật nếu depth này hoàn thành
+        best_move = depth_best_move
         stats.depth_reached = current_depth
 
     stats.elapsed_ms = (perf_counter() - start_time) * 1000.0
     STATE_BEST_MOVE_CACHE[state_key] = best_move
     return best_move, stats
 ```
+
 
 **Ưu điểm của Iterative Deepening:**
 

@@ -606,15 +606,49 @@ Dữ liệu thu thập từ `tests/benchmark.py --sizes 10 --profile kho`:
 
 ---
 
-## 8. Những hạn chế và hướng mở rộng
+## 8. So sánh 4 chế độ thuật toán
 
-### 8.1. Hạn chế hiện tại
+Từ phiên bản v1.2.0, người dùng có thể bật/tắt **Alpha-Beta** và **GBFS** độc lập nhau trong giao diện để quan sát sự khác biệt trực tiếp.
+
+```mermaid
+graph TD
+    A["Minimax thuần\n❌ AB ❌ GBFS\n~8,501 nút | 2/5 pass"] -->|"+ Alpha-Beta"| B["AB Only\n✅ AB ❌ GBFS\n~3,769 nút | 2/5 pass"]
+    A -->|"+ GBFS"| C["GBFS Only\n❌ AB ✅ GBFS\n~15,306 nút | 5/5 pass"]
+    B -->|"+ GBFS"| D["AB + GBFS ✨ Mục tiêu\n✅ AB ✅ GBFS\n~2,768 nút | 5/5 pass"]
+    C -->|"+ Alpha-Beta"| D
+```
+
+### 8.1. Vai trò của từng kỹ thuật
+
+| Kỹ thuật | Tác động chính | Ảnh hưởng nếu tắt |
+|---|---|---|
+| **Alpha-Beta** | Giảm số nút cần duyệt ~82% | Chậm hơn nhiều, nhưng kết quả cuối vẫn đúng |
+| **GBFS** | Định hướng tìm kiếm về các nước có ý nghĩa chiến thuật | Tỷ lệ nhận diện bẫy phức tạp giảm từ 100% xuống 40% |
+
+### 8.2. Cách chạy so sánh và xem báo cáo
+
+```bash
+# Benchmark hiệu năng (thời gian, số nút)
+python tests/benchmark.py --sizes 10 --profile kho
+
+# Kiểm thử chiến thuật (kèm báo cáo bàn cờ trực quan)
+python tests/tactical_tests.py
+```
+
+Kết quả chi tiết của kiểm thử chiến thuật được ghi tại:
+- **`docs/benchmarks/tactical_report.md`**: Chứa bảng so sánh chi tiết và **hình ảnh bàn cờ ASCII** (★ = nước AI chọn, · = nước kỳ vọng) giúp phân tích trực quan hành vi của AI trong từng tình huống cụ thể.
+
+---
+
+## 9. Những hạn chế và hướng mở rộng
+
+### 9.1. Hạn chế hiện tại
 
 1. **Horizon Effect**: AI không nhìn thấy mối đe dọa vượt quá `depth` lớp → có thể bỏ qua bẫy xa.
 2. **Bàn cờ rất lớn (>15x15)**: Dù đã lọc ứng viên, branching factor vẫn lớn nếu thế cờ phức tạp.
 3. **Không có Opening Book**: AI luôn tính từ đầu, không có "sách khai cuộc" định sẵn.
 
-### 8.2. Hướng mở rộng tiềm năng
+### 9.2. Hướng mở rộng tiềm năng
 
 - **Quiescence Search**: Tiếp tục duyệt thêm ở các trạng thái "không ổn định" (đang có mối đe dọa) dù đã chạm `depth`.
 - **MTD(f) hoặc Negascout**: Các biến thể Minimax hiệu quả hơn Alpha-Beta.

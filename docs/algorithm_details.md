@@ -421,20 +421,20 @@ def minimax(
 ) -> int:
 
     stats.nodes_visited += 1  # Đếm mỗi nút đã duyệt
-    # ① Kiểm tra timeout
+    # Kiểm tra timeout
     if deadline is not None and perf_counter() >= deadline:
         raise SearchTimeout()
 
-    # ② Kiểm tra trạng thái kết thúc
+    # Kiểm tra trạng thái kết thúc
     terminal_value = terminal_utility(game, depth, last_move)
     if terminal_value is not None:
         return terminal_value
 
-    # ③ Chạm độ sâu giới hạn → dùng Heuristic
+    # Chạm độ sâu giới hạn → dùng Heuristic
     if depth == 0:
         return evaluate_board(game)
 
-    # ④ Tra cứu Transposition Table
+    # Tra cứu Transposition Table
     key = (game.serialize(), maximizing, depth)
     cached = transposition.get(key)
     if cached is not None:
@@ -508,7 +508,7 @@ def ai_best_move(
     stats = SearchStats()
     start_time = perf_counter()
 
-    # ① Kiểm tra cache — key gắn cả cờ thuật toán
+    # Kiểm tra cache — key gắn cả cờ thuật toán
     state_key = (game.serialize(), depth, max_candidates, max_time_ms or -1, use_ab, use_gbfs)
     cached_move = STATE_BEST_MOVE_CACHE.get(state_key)
     if cached_move and game.is_valid_move(cached_move):
@@ -518,7 +518,7 @@ def ai_best_move(
     candidates = game.get_candidate_moves(radius=1)
     deadline = None if max_time_ms is None else perf_counter() + (max_time_ms / 1000.0)
 
-    # ② Tầng GBFS (chỉ chạy khi bật use_gbfs)
+    # Tầng GBFS (chỉ chạy khi bật use_gbfs)
     if use_gbfs:
         try:
             candidates = gbfs_rank_moves(game, candidates, AI_MARK, HUMAN_MARK,
@@ -531,7 +531,7 @@ def ai_best_move(
     best_move = candidates[0]
     cache = {}  # Transposition table riêng cho lượt này
 
-    # ③ Iterative Deepening: duyệt từ depth=1 đến depth=N
+    # Iterative Deepening: duyệt từ depth=1 đến depth=N
     for current_depth in range(1, depth + 1):
         # Re-rank ứng viên theo từng lớp để tránh lock-in
         if use_gbfs:

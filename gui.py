@@ -74,7 +74,7 @@ class CaroGUI:
     def __init__(self, root: tk.Tk) -> None:
         # Khởi tạo cửa sổ, trạng thái ván đấu và toàn bộ biến điều khiển UI.
         self.root = root
-        self.root.title("Cờ Caro AI v1.1.0 - GBFS + Minimax")
+        self.root.title("Cờ Caro AI v1.2.4 - GBFS + Minimax")
         self.root.minsize(760, 680)
 
         self.palette = {
@@ -335,13 +335,13 @@ class CaroGUI:
 
         advanced_frame = ttk.LabelFrame(self.settings_frame, text="Tùy chỉnh nâng cao", padding=12)
         advanced_frame.grid(row=3, column=0, sticky="ew", pady=(12, 0))
-        ttk.Label(advanced_frame, text="Độ sâu AI:").grid(row=0, column=0, sticky="w")
+        ttk.Label(advanced_frame, text="Độ sâu AI (Số lớp tính trước):").grid(row=0, column=0, sticky="w")
         ttk.Spinbox(advanced_frame, from_=1, to=10, width=8, textvariable=self.depth_var).grid(
-            row=0,
+            row=0, 
             column=1,
             padx=(8, 18),
         )
-        ttk.Label(advanced_frame, text="Ứng viên mỗi lớp:").grid(row=0, column=2, sticky="w")
+        ttk.Label(advanced_frame, text="Ứng viên mỗi lớp (Số nước xét trên 1 độ sâu):").grid(row=0, column=2, sticky="w")
         ttk.Spinbox(advanced_frame, from_=4, to=MAX_BOARD_SIZE * MAX_BOARD_SIZE, width=8, textvariable=self.candidate_var).grid(
             row=0,
             column=3,
@@ -364,13 +364,12 @@ class CaroGUI:
         algo_frame = ttk.LabelFrame(self.settings_frame, text="Cấu hình thuật toán AI", padding=12)
         algo_frame.grid(row=4, column=0, sticky="ew", pady=(12, 0))
         ttk.Label(
-            algo_frame,
             style="Header.TLabel",
             wraplength=640,
         ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 6))
         ttk.Checkbutton(
             algo_frame,
-            text="Alpha-Beta Pruning (cắt tỉa nánh)",
+            text="Alpha-Beta Pruning (cắt tỉa nhánh)",
             variable=self.use_ab_var,
         ).grid(row=1, column=0, sticky="w")
         ttk.Checkbutton(

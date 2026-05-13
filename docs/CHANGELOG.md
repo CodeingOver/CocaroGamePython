@@ -2,6 +2,20 @@
 
 Tất cả các thay đổi quan trọng đối với dự án này sẽ được ghi lại trong tệp này.
 
+## [1.2.4] - 2026-05-13
+
+### **[Cập nhật]**
+- **`gui.py`**:
+    *   Chuẩn hóa câu chữ giải thích cho "Ứng viên mỗi lớp" thành "(Số nước xét trên 1 độ sâu)" để tăng tính kỹ thuật và độ chính xác.
+    *   Cập nhật phiên bản hiển thị lên v1.2.4.
+
+## [1.2.3] - 2026-05-13
+
+### **[Cập nhật]**
+- **`gui.py`**:
+    - Tinh chỉnh giao diện: Lồng giải thích ý nghĩa vào trong dấu ngoặc đơn ngay cạnh tên nhãn (Độ sâu AI, Ứng viên mỗi lớp) để tiết kiệm không gian và giao diện thoáng hơn.
+    - Cập nhật phiên bản hiển thị lên v1.2.3.
+
 ## [1.2.1] - 2026-05-13
 
 ### **[Cập nhật]**

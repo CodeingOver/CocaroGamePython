@@ -2,6 +2,15 @@
 
 Tất cả các thay đổi quan trọng đối với dự án này sẽ được ghi lại trong tệp này.
 
+## [1.2.1] - 2026-05-13
+
+### **[Cập nhật]**
+- **`tests/tactical_tests.py`**: Nâng cấp toàn diện hệ thống log.
+    - Thêm lớp `CaseResult` thu thập chi tiết: nước AI chọn, `SearchStats`, ảnh chụp bàn cờ trước khi AI ra nước.
+    - Bổ sung hàm `render_board_md` vẽ bàn cờ ASCII trực quan (★ = nước AI chọn, · = nước kỳ vọng).
+    - Xuất báo cáo `docs/benchmarks/tactical_report.md` gồm: bảng tóm tắt PASS/FAIL, bảng thống kê hiệu năng trung bình, và chi tiết từng ca kiểm thử có bàn cờ đính kèm.
+    - Làm phong phú output terminal với stats inline: thời gian, số nút, số lần cắt tỉa ngay sau mỗi ca test.
+
 ## [1.2.0] - 2026-05-13
 
 ### **[Thêm mới]**

@@ -7,8 +7,8 @@
 - **Trí tuệ nhân tạo thông minh**: AI sử dụng sự kết hợp giữa GBFS để sàng lọc nước đi và Minimax để duyệt sâu, đảm bảo phản hồi nhanh chóng và nước đi chiến thuật.
 - **Tùy chỉnh linh hoạt**: Người chơi có thể tùy chỉnh kích thước bàn cờ (từ 3x3 đến 30x30) và độ dài chuỗi thắng (mặc định là 5).
 - **Giao diện trực quan**: Xây dựng bằng thư viện Tkinter, hỗ trợ hiển thị rõ nét, thao tác mượt mà và các mức độ khó khác nhau.
-- **Hệ thống Benchmark**: Tích hợp công cụ đo lường hiệu năng, tự động xuất báo cáo dưới dạng Markdown và CSV.
-- **Kiểm thử chiến thuật**: Bộ công cụ `tactical_tests.py` giúp xác minh khả năng nhận diện các thế cờ hiểm hóc (bẫy, chặn 4, thắng ngay).
+- **Hệ thống Benchmark**: Tích hợp công cụ đo lường hiệu năng tại `tests/benchmark.py`, tự động xuất báo cáo dưới dạng Markdown và CSV.
+- **Kiểm thử chiến thuật**: Bộ công cụ `tests/tactical_tests.py` giúp xác minh khả năng nhận diện các thế cờ hiểm hóc (bẫy, chặn 4, thắng ngay).
 
 ## 3. Yêu cầu hệ thống
 - **Ngôn ngữ**: Python 3.8 trở lên.
@@ -41,13 +41,13 @@ python main.py
 ### Chạy Benchmark hiệu năng
 Để kiểm tra tốc độ phản hồi của AI trên nhiều kích thước bàn cờ:
 ```bash
-python benchmark.py --sizes 10,12,15 --win-len 5 --repeats 2
+python tests/benchmark.py --sizes 10,12,15 --win-len 5 --repeats 2
 ```
 
 ### Chạy Kiểm thử chiến thuật
 Để kiểm tra độ thông minh của AI trong các tình huống cụ thể:
 ```bash
-python tactical_tests.py
+python tests/tactical_tests.py
 ```
 
 ---

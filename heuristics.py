@@ -56,27 +56,29 @@ def run_score(length: int, open_ends: int, win_len: int, ai_run: bool) -> int:
 def evaluate_board(game: CaroGame) -> int:
     # Đánh giá toàn cục một trạng thái bàn cờ khi chưa chạm điều kiện kết thúc.
     # Hàm quét cụm liên tiếp theo 4 hướng và chấm điểm dựa trên open-end/open-four.
-
-    # Trạng thái thắng/thua được ưu tiên tuyệt đối để Minimax không cần đọc sâu hơn.
-    winner = game.check_winner()
-    if winner == AI_MARK:
-        return INF // 2
-    if winner == HUMAN_MARK:
-        return -INF // 2
+    # Đã loại bỏ check_winner() vì Minimax/terminal_utility đã xử lý ở tầng trên.
 
     size = game.size
     win_len = game.win_len
     board = game.board
     score = 0
+    center = (size - 1) / 2.0
+    center_bias = 0
 
     directions = ((1, 0), (0, 1), (1, 1), (1, -1))
 
-    # Quét theo cụm liên tiếp; mỗi cụm chỉ chấm đúng 1 lần bằng cách nhận diện điểm bắt đầu run.
     for r in range(size):
         for c in range(size):
             mark = board[r][c]
             if mark == EMPTY:
                 continue
+
+            # Tính center_bias ngay trong vòng lặp chính để tránh quét bàn cờ lần 2.
+            dist_value = int(size - (abs(r - center) + abs(c - center)))
+            if mark == AI_MARK:
+                center_bias += dist_value
+            else:
+                center_bias -= dist_value
 
             for dr, dc in directions:
                 prev_r, prev_c = r - dr, c - dc
@@ -97,18 +99,5 @@ def evaluate_board(game: CaroGame) -> int:
                     open_ends += 1
 
                 score += run_score(length, open_ends, win_len, ai_run=(mark == AI_MARK))
-
-    # Hơi ưu tiên quân ở gần trung tâm để AI chơi chủ động hơn ở giai đoạn đầu ván.
-    center = (size - 1) / 2.0
-    center_bias = 0
-    for r in range(size):
-        for c in range(size):
-            if board[r][c] == EMPTY:
-                continue
-            value = int(size - (abs(r - center) + abs(c - center)))
-            if board[r][c] == AI_MARK:
-                center_bias += value
-            else:
-                center_bias -= value
 
     return score + center_bias

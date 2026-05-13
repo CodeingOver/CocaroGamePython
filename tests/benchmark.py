@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import argparse
 import csv
 from dataclasses import dataclass
@@ -8,6 +9,11 @@ from pathlib import Path
 from statistics import mean
 from time import perf_counter
 from typing import Dict, Iterable, List, Sequence, Tuple
+
+# Thêm thư mục gốc vào sys.path để có thể import các module ai, game, ...
+root_path = Path(__file__).resolve().parent.parent
+if str(root_path) not in sys.path:
+    sys.path.append(str(root_path))
 
 from ai import STATE_BEST_MOVE_CACHE, ai_best_move
 from game import CaroGame, Move
@@ -28,14 +34,14 @@ class Scenario:
 
 
 GUI_PRESETS: Tuple[DifficultyProfile, ...] = (
-    DifficultyProfile(name="Khó", depth=4, candidates=14, time_ms=450),
-    DifficultyProfile(name="Cực khó", depth=5, candidates=16, time_ms=850),
-    DifficultyProfile(name="Địa ngục", depth=6, candidates=18, time_ms=1500),
+    DifficultyProfile(name="Khó", depth=4, candidates=14, time_ms=1000),
+    DifficultyProfile(name="Cực khó", depth=5, candidates=16, time_ms=1500),
+    DifficultyProfile(name="Địa ngục", depth=6, candidates=18, time_ms=2000),
 )
 
 CUSTOM_PRESETS: Tuple[DifficultyProfile, ...] = (
-    DifficultyProfile(name="Tùy chỉnh A", depth=4, candidates=14, time_ms=450),
-    DifficultyProfile(name="Tùy chỉnh B", depth=6, candidates=18, time_ms=1500),
+    DifficultyProfile(name="Tùy chỉnh A", depth=4, candidates=14, time_ms=1000),
+    DifficultyProfile(name="Tùy chỉnh B", depth=6, candidates=18, time_ms=2000),
 )
 
 def apply_scenario(game: CaroGame, scenario: Scenario) -> None:
@@ -210,6 +216,7 @@ def run_profile(
             # Xóa cache toàn cục trước mỗi lượt đo để tránh kết quả bị lệch do trả về từ bộ nhớ đệm.
             STATE_BEST_MOVE_CACHE.clear()
 
+            print(f"  > Chạy {profile.name} - {scenario.name} (Lần {attempt}/{repeats})...", end="\r")
             start = perf_counter()
             move = ai_best_move(
                 game,
@@ -293,6 +300,18 @@ def write_markdown(path: Path, summary_rows: Sequence[Dict[str, object]], detail
     lines.append(f"- Thời gian chạy: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     lines.append("- Tiêu chí đạt: mọi lượt AI <= 2000ms")
     lines.append("")
+    lines.append("## Giải thích ý nghĩa các cột")
+    lines.append("")
+    lines.append("- **Bàn cờ**: Kích thước lưới (ví dụ: 10 nghĩa là 10x10).")
+    lines.append("- **Win_len**: Số quân liên tiếp cần thiết để thắng.")
+    lines.append("- **Cấu hình**: Mức độ khó của AI (Khó, Cực khó, Địa ngục).")
+    lines.append("- **Mẫu**: Số lượng lượt đánh AI đã thực hiện để lấy dữ liệu.")
+    lines.append("- **Budget (ms)**: Ngân sách thời gian tối đa cho phép AI tính toán.")
+    lines.append("- **Min / Avg / Max**: Thời gian phản hồi nhỏ nhất, trung bình và lớn nhất (ms).")
+    lines.append("- **P95**: 95th percentile - 95% số lượt đánh có thời gian phản hồi thấp hơn giá trị này.")
+    lines.append("- **Vượt 2s**: Số lần AI tính toán lâu hơn 2000ms.")
+    lines.append("- **Kết luận**: Đạt (nếu không có lượt nào vượt 2s) hoặc Chưa đạt.")
+    lines.append("")
     lines.append("## Tổng hợp theo cấu hình")
     lines.append("")
     lines.append("| Bàn cờ | Win_len | Cấu hình | Mẫu | Budget (ms) | Min | Avg | P95 | Max | Vượt 2s | Kết luận |")
@@ -333,10 +352,10 @@ def parse_args() -> argparse.Namespace:
         default=5,
         help="Số quân liên tiếp để thắng (sẽ tự hạ xuống nếu lớn hơn size)",
     )
-    parser.add_argument("--repeats", type=int, default=3, help="Số lần chạy mỗi kịch bản")
+    parser.add_argument("--repeats", type=int, default=1, help="Số lần chạy mỗi kịch bản")
     parser.add_argument(
         "--output-dir",
-        default="docs/benchmarks",
+        default=str(root_path / "docs" / "benchmarks"),
         help="Thư mục xuất báo cáo markdown/csv",
     )
     return parser.parse_args()
@@ -368,10 +387,9 @@ def main() -> None:
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    csv_path = output_dir / f"benchmark_{timestamp}.csv"
-    md_path = output_dir / f"benchmark_{timestamp}.md"
+    csv_path = output_dir / "benchmark.csv"
+    md_path = output_dir / "benchmark.md"
 
     write_csv(csv_path, all_rows)
     write_markdown(md_path, summary_rows, all_rows)

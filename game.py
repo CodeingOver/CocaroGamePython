@@ -20,6 +20,7 @@ class CaroGame:
         self.size = size
         self.win_len = win_len
         self.board: List[List[str]] = [[EMPTY for _ in range(size)] for _ in range(size)]
+        self.occupied_cells: List[Tuple[int, int]] = []
 
     def is_valid_move(self, move: Move) -> bool:
         # Kiểm tra nước đi có nằm trong bàn và đang ở ô trống hay không.
@@ -34,40 +35,38 @@ class CaroGame:
         # Đánh một quân của player tại vị trí move.
 
         self.board[move.row][move.col] = player
+        self.occupied_cells.append((move.row, move.col))
 
     def undo_move(self, move: Move) -> None:
         # Hoàn tác một nước đi, trả ô về trạng thái trống.
 
         self.board[move.row][move.col] = EMPTY
+        if self.occupied_cells:
+            # remove() sẽ xóa phần tử cuối cùng khớp, vì undo thường là theo LIFO nên pop() hoặc remove() đều ổn.
+            # Ở đây dùng remove để đảm bảo đúng tọa độ.
+            self.occupied_cells.remove((move.row, move.col))
 
     def is_full(self) -> bool:
         # Kiểm tra bàn cờ đã kín hoàn toàn hay chưa.
 
-        return all(cell != EMPTY for row in self.board for cell in row)
+        return len(self.occupied_cells) == self.size * self.size
 
     def get_candidate_moves(self, radius: int = 1) -> List[Move]:
         # Sinh danh sách ứng viên gần các quân đã có để giảm branching factor.
         # radius nhỏ giúp AI tập trung vào vùng có tương tác chiến thuật, tránh duyệt toàn bàn.
 
-        # Chỉ xét vùng lân cận các quân đã có để giảm mạnh số nhánh phải duyệt.
-        occupied: List[Tuple[int, int]] = []
-        for r in range(self.size):
-            for c in range(self.size):
-                if self.board[r][c] != EMPTY:
-                    occupied.append((r, c))
-
-        # Bàn trống thì luôn bắt đầu từ ô trung tâm để giữ thế cân bằng.
-        if not occupied:
+        # Sử dụng danh sách occupied_cells đã được duy trì để tránh quét toàn bàn.
+        if not self.occupied_cells:
             center = self.size // 2
             return [Move(center, center)]
 
         # Giai đoạn đầu ván cần mở rộng bán kính để tránh bị "khóa tầm nhìn" vào một trục thẳng.
         adaptive_radius = radius
-        if len(occupied) <= max(6, self.win_len):
+        if len(self.occupied_cells) <= max(6, self.win_len):
             adaptive_radius = max(radius, 2)
 
         candidates = set()
-        for r, c in occupied:
+        for r, c in self.occupied_cells:
             for dr in range(-adaptive_radius, adaptive_radius + 1):
                 for dc in range(-adaptive_radius, adaptive_radius + 1):
                     nr, nc = r + dr, c + dc

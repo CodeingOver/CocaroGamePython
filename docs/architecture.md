@@ -21,8 +21,9 @@ Cocaro/
 ├── ai.py                # Engine AI: Minimax, Alpha-Beta, GBFS
 ├── heuristics.py        # Hàm đánh giá trạng thái bàn cờ (Score calculation)
 ├── constants.py         # Quản lý hằng số hệ thống
-├── benchmark.py         # Công cụ đo lường hiệu năng AI
-├── tactical_tests.py    # Bộ kiểm thử các tình huống chiến thuật
+├── tests/               # Thư mục kiểm thử và benchmark
+│   ├── benchmark.py     # Công cụ đo lường hiệu năng AI
+│   └── tactical_tests.py # Bộ kiểm thử các tình huống chiến thuật
 └── docs/                # Thư mục tài liệu
     ├── architecture.md  # Tài liệu kiến trúc (File này)
     ├── CHANGELOG.md     # Nhật ký thay đổi
@@ -44,10 +45,11 @@ Hệ thống được chia thành 3 lớp chính:
 6. Danh sách ứng viên tốt nhất được đưa vào **Minimax + Alpha-Beta** để tìm kiếm sâu hơn.
 7. Nước đi tối ưu được trả về, **`gui.py`** vẽ quân cờ của AI lên màn hình.
 
-## 6. Cơ chế bảo mật (Security Mechanisms)
+## 6. Cơ chế hiệu năng và bảo mật (Performance & Security)
+- **Search Pruning**: Kết hợp Alpha-Beta với GBFS cục bộ ở các tầng nông để tối đa hóa hiệu quả cắt tỉa mà không gây quá tải CPU ở các tầng sâu.
+- **Incremental State**: Duy trì danh sách các ô đã đánh (`occupied_cells`) để sinh nước đi ứng viên nhanh chóng, tránh quét toàn bàn cờ.
+- **Time Boxing**: AI được giới hạn thời gian tính toán (timeout) nghiêm ngặt nhờ cơ chế `deadline` kiểm tra liên tục ở mọi cấp độ đệ quy và sắp xếp.
 - **Validation**: Kiểm tra nghiêm ngặt tính hợp lệ của nước đi (tránh ghi đè, đánh ngoài biên).
-- **Time Boxing**: AI được giới hạn thời gian tính toán (timeout) để tránh làm treo ứng dụng khi gặp bài toán quá phức tạp.
-- **Input Sanitization**: Xử lý ngoại lệ khi người dùng nhập thông số bàn cờ không hợp lệ trong các ô cấu hình.
 
 ## 7. APIs / Routes cốt lõi (Core APIs/Routes)
 Các hàm quan trọng điều phối toàn bộ hệ thống:

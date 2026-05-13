@@ -62,10 +62,16 @@ def gbfs_rank_moves(
     player: str,
     opponent: str,
     maximizing: bool,
+    deadline: Optional[float] = None,
 ) -> List[Move]:
     # Sắp xếp danh sách nước đi theo điểm tham lam để giảm số nhánh cần duyệt sâu.
+    # Đã bổ sung deadline check để tránh bị kẹt trong giai đoạn sắp xếp ở bàn cờ lớn.
 
-    scored: List[Tuple[int, Move]] = [(_greedy_move_score(game, move, player, opponent), move) for move in moves]
+    scored: List[Tuple[int, Move]] = []
+    for move in moves:
+        if deadline is not None and perf_counter() >= deadline:
+            raise SearchTimeout()
+        scored.append((_greedy_move_score(game, move, player, opponent), move))
 
     scored.sort(key=lambda x: x[0], reverse=maximizing)
     return [mv for _, mv in scored]
@@ -112,8 +118,12 @@ def minimax(
         opponent = AI_MARK
 
     moves = game.get_candidate_moves(radius=1)
-    # GBFS chỉ giữ lại và sắp xếp những nước hứa hẹn nhất trước khi Minimax duyệt sâu.
-    moves = gbfs_rank_moves(game, moves, player, opponent, maximizing)
+    # GBFS cực kỳ tốn kém vì gọi evaluate_board toàn bàn. 
+    # Chỉ thực hiện sắp xếp ở các tầng nông (depth >= 2) để tối ưu Alpha-Beta.
+    # Ở các tầng sâu, tin tưởng vào thứ tự từ tầng trên hoặc duyệt ngẫu nhiên để tiết kiệm CPU.
+    if depth >= 2:
+        moves = gbfs_rank_moves(game, moves, player, opponent, maximizing, deadline)
+    
     if len(moves) > max_candidates:
         moves = moves[:max_candidates]
 
@@ -192,18 +202,19 @@ def ai_best_move(
 
     candidates = game.get_candidate_moves(radius=1)
 
+    deadline = None if max_time_ms is None else perf_counter() + (max_time_ms / 1000.0)
+
     # Tầng GBFS: chấm điểm toàn bộ nước ứng viên rồi chỉ đưa nhóm tốt nhất vào vòng Minimax.
-    candidates = gbfs_rank_moves(game, candidates, AI_MARK, HUMAN_MARK, maximizing=True)
+    candidates = gbfs_rank_moves(game, candidates, AI_MARK, HUMAN_MARK, maximizing=True, deadline=deadline)
     if len(candidates) > max_candidates:
         candidates = candidates[:max_candidates]
 
     best_move = candidates[0]
-    deadline = None if max_time_ms is None else perf_counter() + (max_time_ms / 1000.0)
     cache: Dict[Tuple[str, bool, int], int] = {}
 
     for current_depth in range(1, depth + 1):
         # Re-rank lại theo từng lớp sâu để tránh lock-in vào một hướng từ vòng lặp trước.
-        search_candidates = gbfs_rank_moves(game, candidates, AI_MARK, HUMAN_MARK, maximizing=True)
+        search_candidates = gbfs_rank_moves(game, candidates, AI_MARK, HUMAN_MARK, maximizing=True, deadline=deadline)
         if len(search_candidates) > max_candidates:
             search_candidates = search_candidates[:max_candidates]
 

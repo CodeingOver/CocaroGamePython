@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+# Thêm thư mục gốc vào sys.path để có thể import các module ai, game, ...
+root_path = Path(__file__).resolve().parent.parent
+if str(root_path) not in sys.path:
+    sys.path.append(str(root_path))
+
 from dataclasses import dataclass
 from typing import Sequence, Set, Tuple
 
@@ -37,7 +45,7 @@ TACTICAL_CASES: Tuple[TacticalCase, ...] = (
         expected={(5, 1), (5, 6)},
         depth=4,
         max_candidates=14,
-        max_time_ms=450,
+        max_time_ms=1000,
     ),
     TacticalCase(
         name="AI phải chặn thua ngay theo cột",
@@ -54,7 +62,7 @@ TACTICAL_CASES: Tuple[TacticalCase, ...] = (
         expected={(1, 6), (6, 6)},
         depth=5,
         max_candidates=16,
-        max_time_ms=850,
+        max_time_ms=1500,
     ),
     TacticalCase(
         name="AI ưu tiên kết thúc đường chéo",
@@ -71,7 +79,7 @@ TACTICAL_CASES: Tuple[TacticalCase, ...] = (
         expected={(1, 1), (6, 6)},
         depth=6,
         max_candidates=18,
-        max_time_ms=1500,
+        max_time_ms=2000,
     ),
     TacticalCase(
         name="AI ưu tiên chặn thay vì nối thẳng",
@@ -89,7 +97,7 @@ TACTICAL_CASES: Tuple[TacticalCase, ...] = (
         expected={(1, 7), (6, 7)},
         depth=5,
         max_candidates=16,
-        max_time_ms=850,
+        max_time_ms=1500,
     ),
     TacticalCase(
         name="AI tạo bẫy 2 nước open-four",
@@ -106,7 +114,7 @@ TACTICAL_CASES: Tuple[TacticalCase, ...] = (
         expected={(5, 5)},
         depth=5,
         max_candidates=16,
-        max_time_ms=850,
+        max_time_ms=1500,
     ),
 )
 

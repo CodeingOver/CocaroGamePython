@@ -365,7 +365,6 @@ class CaroGUI:
         algo_frame.grid(row=4, column=0, sticky="ew", pady=(12, 0))
         ttk.Label(
             algo_frame,
-            text="Mục tiêu chính: Minimax AB + GBFS. Có thể tắt từng thành phần để sây thấy sự khác biệt:",
             style="Header.TLabel",
             wraplength=640,
         ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 6))

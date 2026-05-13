@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import List, Optional
 
-from ai import ai_best_move
+from ai import ai_best_move, SearchStats
 from constants import AI_MARK, EMPTY, HUMAN_MARK, MAX_BOARD_SIZE, MIN_BOARD_SIZE
 from game import CaroGame, Move
 
@@ -115,6 +115,9 @@ class CaroGUI:
         self.human_first_var = tk.BooleanVar(value=True)
         self.status_var = tk.StringVar(value="Chào mừng bạn đến với Cờ Caro AI")
         self.game_info_var = tk.StringVar(value="")
+        self.ai_stats_var = tk.StringVar(value="")
+        self.use_ab_var = tk.BooleanVar(value=True)
+        self.use_gbfs_var = tk.BooleanVar(value=True)
 
         self.root.configure(bg=self.palette["bg"])
         self.style = ttk.Style(self.root)
@@ -358,8 +361,27 @@ class CaroGUI:
             command=self.apply_custom_difficulty,
         ).grid(row=2, column=0, columnspan=4, sticky="w", pady=(10, 0))
 
+        algo_frame = ttk.LabelFrame(self.settings_frame, text="Cấu hình thuật toán AI", padding=12)
+        algo_frame.grid(row=4, column=0, sticky="ew", pady=(12, 0))
+        ttk.Label(
+            algo_frame,
+            text="Mục tiêu chính: Minimax AB + GBFS. Có thể tắt từng thành phần để sây thấy sự khác biệt:",
+            style="Header.TLabel",
+            wraplength=640,
+        ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 6))
+        ttk.Checkbutton(
+            algo_frame,
+            text="Alpha-Beta Pruning (cắt tỉa nánh)",
+            variable=self.use_ab_var,
+        ).grid(row=1, column=0, sticky="w")
+        ttk.Checkbutton(
+            algo_frame,
+            text="GBFS - Sắp xếp nước đi (Greedy Best-First Search)",
+            variable=self.use_gbfs_var,
+        ).grid(row=2, column=0, sticky="w", pady=(4, 0))
+
         action = ttk.Frame(self.settings_frame)
-        action.grid(row=4, column=0, sticky="w", pady=(12, 0))
+        action.grid(row=5, column=0, sticky="w", pady=(12, 0))
         ttk.Button(
             action,
             text="Quay lại menu",
@@ -392,6 +414,8 @@ class CaroGUI:
         status.grid(row=0, column=0, sticky="ew")
         game_info = ttk.Label(info_card, textvariable=self.game_info_var, style="Muted.TLabel")
         game_info.grid(row=1, column=0, sticky="ew")
+        ai_stats = ttk.Label(info_card, textvariable=self.ai_stats_var, style="Muted.TLabel")
+        ai_stats.grid(row=2, column=0, sticky="ew")
 
         self.board_frame.grid(row=2, column=0, sticky="nsew")
 
@@ -666,11 +690,16 @@ class CaroGUI:
                 self.status_var.set("Cấu hình AI không hợp lệ. Vui lòng kiểm tra cài đặt.")
                 return
 
-            move = ai_best_move(
+            use_ab = self.use_ab_var.get()
+            use_gbfs = self.use_gbfs_var.get()
+
+            move, stats = ai_best_move(
                 self.game,
                 depth=depth,
                 max_candidates=max_candidates,
                 max_time_ms=time_budget,
+                use_ab=use_ab,
+                use_gbfs=use_gbfs,
             )
         finally:
             self.ai_thinking = False
@@ -678,6 +707,14 @@ class CaroGUI:
         self.game.make_move(move, AI_MARK)
         self.last_move = move
         self._render_move(move)
+
+        # Hiển thị thống kê thuật toán sau mỗi lượt AI
+        algo_label = "AB+GBFS" if (self.use_ab_var.get() and self.use_gbfs_var.get()) else \
+                     ("AB" if self.use_ab_var.get() else ("GBFS" if self.use_gbfs_var.get() else "Minimax thuần"))
+        self.ai_stats_var.set(
+            f"[Âl AI: {algo_label}] · T/g: {stats.elapsed_ms:.0f}ms · Nút: {stats.nodes_visited:,} · "
+            f"Cắt tỉa: {stats.cutoffs:,} · Độ sâu đạt: {stats.depth_reached}"
+        )
 
         if self._finish_if_terminal():
             return

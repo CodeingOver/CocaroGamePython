@@ -64,6 +64,21 @@ AI lưu trữ nước đi tốt nhất của các trạng thái đã gặp vào 
 - Hình ảnh bàn cờ (Serialized string).
 - Độ sâu tìm kiếm.
 - Giới hạn thời gian.
+- **Cờ thuật toán `use_ab` và `use_gbfs`** — đảm bảo không nhầm lẫn kết quả giữa 2 chế độ khác nhau.
+
+### 4.3. Thống kê tìm kiếm (`SearchStats`)
+Từ phiên bản v1.2.0, mỗi lượt AI trả về cả nước đi lẫn một bộ thống kê:
+
+```python
+@dataclass
+class SearchStats:
+    nodes_visited: int = 0   # Tổng số nút trong cây tìm kiếm đã duyệt
+    cutoffs: int = 0         # Số lần Alpha-Beta cắt tỉa thành công
+    depth_reached: int = 0   # Độ sâu thực sự đạt được (Iterative Deepening)
+    elapsed_ms: float = 0.0  # Thời gian tính toán (ms)
+```
+
+Các chỉ số này được thu thập trong `minimax` và `ai_best_move`, sau đó hiển thị trực tiếp trên giao diện GUI ngay sau mỗi nước đi của AI. Chúng cũng được ghi vào báo cáo Benchmark để so sánh giữa các chế độ.
 
 ---
 
@@ -396,9 +411,13 @@ def gbfs_rank_moves(game, moves, player, opponent, maximizing) -> List[Move]:
 ```python
 def minimax(
     game, depth, alpha, beta, maximizing,
-    last_move, transposition, max_candidates, deadline
+    last_move, transposition, max_candidates, deadline,
+    stats: SearchStats,       # Đối tượng thống kê (đếm nút, cắt tỉa)
+    use_ab: bool = True,      # Bật/tắt cắt tỉa Alpha-Beta
+    use_gbfs: bool = True,    # Bật/tắt sắp xếp GBFS
 ) -> int:
 
+    stats.nodes_visited += 1  # Đếm mỗi nút đã duyệt
     # ① Kiểm tra timeout
     if deadline is not None and perf_counter() >= deadline:
         raise SearchTimeout()
@@ -434,15 +453,16 @@ def minimax(
         for move in moves:
             game.make_move(move, player)
             try:
-                score = minimax(game, depth-1, alpha, beta, False, move, ...)
+                score = minimax(game, depth-1, alpha, beta, False, move, transposition, max_candidates, deadline, stats, use_ab, use_gbfs)
             finally:
                 game.undo_move(move)
 
             value = max(value, score)
-            alpha = max(alpha, value)
-
-            if beta <= alpha:   # ✂ CẮT TỈA Beta!
-                break           # Nhánh MIN sẽ không chọn nhánh này → bỏ qua
+            if use_ab:              # Chỉ cắt tỉa khi bật Alpha-Beta
+                alpha = max(alpha, value)
+                if beta <= alpha:   # ✂ CẮT TỈA Beta!
+                    stats.cutoffs += 1
+                    break
 ```
 
 #### 5.3. Nhánh MIN (lượt người chơi)
@@ -458,15 +478,16 @@ def minimax(
         for move in moves:
             game.make_move(move, player)
             try:
-                score = minimax(game, depth-1, alpha, beta, True, move, ...)
+                score = minimax(game, depth-1, alpha, beta, True, move, transposition, max_candidates, deadline, stats, use_ab, use_gbfs)
             finally:
                 game.undo_move(move)
 
             value = min(value, score)
-            beta = min(beta, value)
-
-            if beta <= alpha:   # ✂ CẮT TỈA Alpha!
-                break           # Nhánh MAX sẽ không chọn nhánh này → bỏ qua
+            if use_ab:              # Chỉ cắt tỉa khi bật Alpha-Beta
+                beta = min(beta, value)
+                if beta <= alpha:   # ✂ CẮT TỈA Alpha!
+                    stats.cutoffs += 1
+                    break
 
     transposition[key] = value  # Lưu kết quả vào cache
     return value
@@ -487,29 +508,29 @@ MAX node (AI)
 
 ### Bước 6: `ai_best_move` — Điều phối toàn bộ quá trình
 
-Đây là hàm duy nhất được gọi từ bên ngoài. Nó kết hợp tất cả các kỹ thuật trên:
-
 ```python
-def ai_best_move(game, depth, max_candidates, max_time_ms=None) -> Move:
-
+def ai_best_move(
+    game, depth, max_candidates,
+    max_time_ms=None,
+    use_ab: bool = True,    # Bật/tắt Alpha-Beta
+    use_gbfs: bool = True,  # Bật/tắt GBFS
+) -> Tuple[Move, SearchStats]:
+    stats = SearchStats()
+    start_time = perf_counter()
+    candidates = game.get_candidate_moves(radius=1)
+    
     # ① Kiểm tra cache trạng thái toàn cục
     state_key = (game.serialize(), depth, max_candidates, max_time_ms or -1)
     cached_move = STATE_BEST_MOVE_CACHE.get(state_key)
     if cached_move and game.is_valid_move(cached_move):
-        return cached_move  # Trả về ngay nếu đã tính trước đó
+        return cached_move, stats
 
-    # ② Lọc + xếp hạng ứng viên bằng GBFS
-    candidates = game.get_candidate_moves(radius=1)
-    candidates = gbfs_rank_moves(game, candidates, AI_MARK, HUMAN_MARK, True)
-    candidates = candidates[:max_candidates]
-
-    best_move = candidates[0]  # Khởi tạo: chọn nước GBFS tốt nhất
+    best_move = candidates[0]
     deadline = perf_counter() + (max_time_ms / 1000.0) if max_time_ms else None
-    cache = {}  # Transposition table riêng cho lượt này
+    cache = {}
 
     # ③ Iterative Deepening: duyệt từ depth=1 đến depth=N
     for current_depth in range(1, depth + 1):
-        # Re-rank lại để thứ tự tốt nhất phù hợp với độ sâu hiện tại
         search_candidates = gbfs_rank_moves(game, candidates, AI_MARK, HUMAN_MARK, True)
         search_candidates = search_candidates[:max_candidates]
 
@@ -523,7 +544,7 @@ def ai_best_move(game, depth, max_candidates, max_time_ms=None) -> Move:
 
                 game.make_move(move, AI_MARK)
                 try:
-                    score = minimax(game, current_depth-1, -INF, INF, False, move, cache, ...)
+                    score = minimax(game, current_depth-1, -INF, INF, False, move, cache, max_candidates, deadline, stats, use_ab, use_gbfs)
                 finally:
                     game.undo_move(move)
 
@@ -535,9 +556,11 @@ def ai_best_move(game, depth, max_candidates, max_time_ms=None) -> Move:
             break  # Hết thời gian → giữ kết quả từ depth trước
 
         best_move = depth_best_move  # Cập nhật nếu depth này hoàn thành
+        stats.depth_reached = current_depth
 
+    stats.elapsed_ms = (perf_counter() - start_time) * 1000.0
     STATE_BEST_MOVE_CACHE[state_key] = best_move
-    return best_move
+    return best_move, stats
 ```
 
 **Ưu điểm của Iterative Deepening:**
@@ -562,14 +585,24 @@ def ai_best_move(game, depth, max_candidates, max_time_ms=None) -> Move:
 
 Trong đó: `b` = branching factor, `d` = depth, `k` = max_candidates
 
-### 7.2. Ví dụ thực tế
+### 7.2. Kết quả thực nghiệm (Benchmark trên bàn 10x10, mức Khó, depth=4)
 
-Với bàn 10x10, `win_len=5`, `depth=4`, `max_candidates=12`:
-- Minimax thuần: ~90⁴ ≈ **65 triệu** nút
-- Sau GBFS lọc còn 12 ứng viên: ~12⁴ ≈ **20,736** nút
-- Sau Alpha-Beta cắt: còn ~**1,000-3,000** nút thực sự được xét
+Dữ liệu thu thập từ `tests/benchmark.py --sizes 10 --profile kho`:
 
-→ **Tăng tốc ~20,000 lần** so với Minimax không tối ưu.
+| Thuật toán | Avg (ms) | Avg Nút | Avg Cắt tỉa | Tỷ lệ Pass chiến thuật |
+|---|---:|---:|---:|:---:|
+| **AB + GBFS** (mục tiêu) | **~277ms** | **2,768** | **357** | **5/5 (100%)** |
+| AB Only | ~137ms | 3,769 | 431 | 2/5 (40%) |
+| GBFS Only | ~1002ms | 15,306 | 0 | 5/5 (100%) |
+| Minimax thuần | ~1000ms | 8,501 | 0 | 2/5 (40%) |
+
+> [!NOTE]
+> **Phân tích kết quả:**
+> - **GBFS là yếu tố quyết định độ thông minh** (tỷ lệ pass 100% vs 40% khi không có GBFS). Không có GBFS, AI bỏ lỡ các bẫy phức tạp như Open-Four và thế cờ chéo.
+> - **Alpha-Beta là yếu tố quyết định tốc độ** (giảm số nút từ ~15,000 xuống ~2,700 khi kết hợp với GBFS — giảm ~82%).
+> - **AB Only thực ra nhanh hơn AB+GBFS** (~137ms vs ~277ms) vì tránh được chi phí chấm điểm GBFS. Tuy nhiên, chất lượng nước đi kém hơn đáng kể.
+> - **Kết luận**: AB + GBFS là sự kết hợp tối ưu nhất: vừa đủ nhanh (278ms), vừa thông minh (100% pass).
+
 
 ---
 

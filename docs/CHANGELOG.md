@@ -2,6 +2,16 @@
 
 Tất cả các thay đổi quan trọng đối với dự án này sẽ được ghi lại trong tệp này.
 
+## [1.2.0] - 2026-05-13
+
+### **[Thêm mới]**
+- **So sánh thuật toán (Algorithm Comparison)**:
+    - Bổ sung cờ điều khiển `use_ab` (Alpha-Beta) và `use_gbfs` (GBFS) vào `ai_best_move` và `minimax` để hỗ trợ 4 chế độ: AB+GBFS (mục tiêu chính), AB Only, GBFS Only, Minimax thuần.
+    - Bổ sung lớp `SearchStats` để đếm số nút đã duyệt (`nodes_visited`), số lần cắt tỉa (`cutoffs`), và độ sâu thực sự đạt được (`depth_reached`).
+    - Cập nhật GUI (`gui.py`): thêm 2 checkbox trong màn cài đặt để bật/tắt AB và GBFS, và panel hiển thị thống kê (thời gian, nút, cắt tỉa) ngay sau mỗi lượt AI.
+    - Cập nhật `tests/benchmark.py`: tự động lặp qua 4 chế độ thuật toán, ghi báo cáo so sánh gồm `avg_nodes` và `avg_cutoffs`. Thêm tham số `--profile` để chọn mức độ khó cần benchmark.
+    - Cập nhật `tests/tactical_tests.py`: chạy toàn bộ bộ test cho cả 4 chế độ và xuất bảng so sánh tỷ lệ PASS trực quan.
+
 ## [1.1.5] - 2026-05-13
 
 ### **[Cập nhật]**

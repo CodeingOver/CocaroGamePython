@@ -9,11 +9,19 @@ if str(root_path) not in sys.path:
     sys.path.append(str(root_path))
 
 from dataclasses import dataclass
-from typing import Sequence, Set, Tuple
+from typing import Dict, List, Sequence, Set, Tuple
 
 from ai import ai_best_move
 from constants import AI_MARK, HUMAN_MARK
 from game import CaroGame, Move
+
+# 4 chế độ thuật toán để so sánh (nhãn, use_ab, use_gbfs)
+ALGO_MODES: Tuple[Tuple[str, bool, bool], ...] = (
+    ("AB + GBFS", True,  True),
+    ("AB Only",   True,  False),
+    ("GBFS Only", False, True),
+    ("Minimax",   False, False),
+)
 
 
 @dataclass(frozen=True)
@@ -127,35 +135,65 @@ def setup_case(case: TacticalCase) -> CaroGame:
     return game
 
 
-def run_case(case: TacticalCase) -> bool:
+def run_case(case: TacticalCase, use_ab: bool = True, use_gbfs: bool = True) -> bool:
     # Chạy một case và kiểm tra nước đi AI có thuộc tập kỳ vọng hay không.
     game = setup_case(case)
-    move = ai_best_move(
+    move, _stats = ai_best_move(
         game,
         depth=case.depth,
         max_candidates=case.max_candidates,
         max_time_ms=case.max_time_ms,
+        use_ab=use_ab,
+        use_gbfs=use_gbfs,
     )
-    result = (move.row, move.col) in case.expected
-
-    expected_text = ", ".join(str(x) for x in sorted(case.expected))
-    print(f"- {case.name}: AI chọn {(move.row, move.col)}, kỳ vọng {{{expected_text}}} -> {'PASS' if result else 'FAIL'}")
-    return result
+    return (move.row, move.col) in case.expected
 
 
 def main() -> None:
-    passed = 0
     total = len(TACTICAL_CASES)
+    # Lưu kết quả theo chế độ: {algo_label: [True/False, ...]}
+    results: Dict[str, List[bool]] = {}
 
-    print("=== KIỂM THỬ THẾ CỜ CHIẾN THUẬT ===")
-    for case in TACTICAL_CASES:
-        if run_case(case):
-            passed += 1
+    for algo_label, use_ab, use_gbfs in ALGO_MODES:
+        print(f"\n=== [{algo_label}] KIỂM THỬ THẾ CỜ CHIẾN THUẬT ===")
+        case_results: List[bool] = []
+        for case in TACTICAL_CASES:
+            passed = run_case(case, use_ab=use_ab, use_gbfs=use_gbfs)
+            case_results.append(passed)
+            status = "PASS" if passed else "FAIL"
+            print(f"  - {case.name}: {status}")
+        results[algo_label] = case_results
+        passed_count = sum(case_results)
+        print(f"  Kết quả: {passed_count}/{total} PASS")
 
-    print(f"\nKết quả: {passed}/{total} case PASS")
-    if passed != total:
+    # Bảng tổng hợp so sánh tỷ lệ pass
+    print("\n" + "=" * 55)
+    print("  BẢNG SO SÁNH TỶ LỆ PASS CHIẾN THUẬT")
+    print("=" * 55)
+    header = f"  {'Case':<38}" + "".join(f"{'|'+lbl[:8]:^11}" for lbl, _, _ in ALGO_MODES)
+    print(header)
+    print("-" * 55)
+    for i, case in enumerate(TACTICAL_CASES):
+        row_str = f"  {case.name[:38]:<38}"
+        for algo_label, _, _ in ALGO_MODES:
+            cell = " PASS " if results[algo_label][i] else " FAIL "
+            row_str += f"|{cell:^10}"
+        print(row_str)
+    print("-" * 55)
+    summary_row = f"  {'TỔNG PASS':<38}"
+    for algo_label, _, _ in ALGO_MODES:
+        count = sum(results[algo_label])
+        summary_row += f"|{count}/{total}    "
+    print(summary_row)
+    print("=" * 55)
+
+    # Chỉ thoát lỗi nếu chế độ mục tiêu (AB+GBFS) không pass hết
+    ab_gbfs_results = results.get("AB + GBFS", [])
+    if not all(ab_gbfs_results):
         raise SystemExit(1)
 
 
 if __name__ == "__main__":
     main()
+
+

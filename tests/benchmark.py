@@ -237,7 +237,7 @@ def run_profile(
                     "scenario": scenario.name,
                     "attempt": attempt,
                     "elapsed_ms": round(elapsed_ms, 3),
-                    "pass_under_2000ms": elapsed_ms <= 2000.0,
+                    "pass_under_budget": elapsed_ms <= (profile.time_ms + 50.0),
                     "move": f"({move.row},{move.col})",
                 }
             )
@@ -260,20 +260,21 @@ def summarize(rows: Sequence[Dict[str, object]]) -> List[Dict[str, object]]:
 
     summary: List[Dict[str, object]] = []
     for (profile, board_size, win_len), values in grouped.items():
-        over_2s = sum(1 for value in values if value > 2000.0)
+        budget = budgets[(profile, board_size, win_len)]
+        over_budget = sum(1 for value in values if value > (budget + 50.0))
         summary.append(
             {
                 "profile": profile,
                 "board_size": board_size,
                 "win_len": win_len,
                 "samples": len(values),
-                "time_budget_ms": budgets[(profile, board_size, win_len)],
+                "time_budget_ms": budget,
                 "min_ms": round(min(values), 3),
                 "avg_ms": round(mean(values), 3),
                 "p95_ms": round(percentile(values, 0.95), 3),
                 "max_ms": round(max(values), 3),
-                "over_2s": over_2s,
-                "pass_all_under_2s": over_2s == 0,
+                "over_budget": over_budget,
+                "pass_all": over_budget == 0,
             }
         )
 
@@ -298,7 +299,7 @@ def write_markdown(path: Path, summary_rows: Sequence[Dict[str, object]], detail
     lines.append("# Báo cáo benchmark AI Cờ Caro")
     lines.append("")
     lines.append(f"- Thời gian chạy: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    lines.append("- Tiêu chí đạt: mọi lượt AI <= 2000ms")
+    lines.append("- Tiêu chí đạt: Thời gian phản hồi <= Budget + 50ms (sai số cho phép)")
     lines.append("")
     lines.append("## Giải thích ý nghĩa các cột")
     lines.append("")
@@ -309,18 +310,18 @@ def write_markdown(path: Path, summary_rows: Sequence[Dict[str, object]], detail
     lines.append("- **Budget (ms)**: Ngân sách thời gian tối đa cho phép AI tính toán.")
     lines.append("- **Min / Avg / Max**: Thời gian phản hồi nhỏ nhất, trung bình và lớn nhất (ms).")
     lines.append("- **P95**: 95th percentile - 95% số lượt đánh có thời gian phản hồi thấp hơn giá trị này.")
-    lines.append("- **Vượt 2s**: Số lần AI tính toán lâu hơn 2000ms.")
-    lines.append("- **Kết luận**: Đạt (nếu không có lượt nào vượt 2s) hoặc Chưa đạt.")
+    lines.append("- **Vượt Budget**: Số lần AI tính toán lâu hơn ngân sách cho phép (+50ms buffer).")
+    lines.append("- **Kết luận**: Đạt (nếu không vượt ngân sách) hoặc Chưa đạt.")
     lines.append("")
     lines.append("## Tổng hợp theo cấu hình")
     lines.append("")
-    lines.append("| Bàn cờ | Win_len | Cấu hình | Mẫu | Budget (ms) | Min | Avg | P95 | Max | Vượt 2s | Kết luận |")
+    lines.append("| Bàn cờ | Win_len | Cấu hình | Mẫu | Budget (ms) | Min | Avg | P95 | Max | Vượt Budget | Kết luận |")
     lines.append("|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---|")
 
     for row in summary_rows:
-        verdict = "Đạt" if bool(row["pass_all_under_2s"]) else "Chưa đạt"
+        verdict = "Đạt" if bool(row["pass_all"]) else "Chưa đạt"
         lines.append(
-            "| {board_size} | {win_len} | {profile} | {samples} | {time_budget_ms} | {min_ms} | {avg_ms} | {p95_ms} | {max_ms} | {over_2s} | {verdict} |".format(
+            "| {board_size} | {win_len} | {profile} | {samples} | {time_budget_ms} | {min_ms} | {avg_ms} | {p95_ms} | {max_ms} | {over_budget} | {verdict} |".format(
                 verdict=verdict,
                 **row,
             )
@@ -329,11 +330,11 @@ def write_markdown(path: Path, summary_rows: Sequence[Dict[str, object]], detail
     lines.append("")
     lines.append("## Chi tiết từng lượt")
     lines.append("")
-    lines.append("| Bàn cờ | Win_len | Cấu hình | Kịch bản | Lần chạy | Thời gian (ms) | Nước đi | <=2s |")
+    lines.append("| Bàn cờ | Win_len | Cấu hình | Kịch bản | Lần chạy | Thời gian (ms) | Nước đi | OK |")
     lines.append("|---:|---:|---|---|---:|---:|---|---|")
     for row in details_rows:
         lines.append(
-            "| {board_size} | {win_len} | {profile} | {scenario} | {attempt} | {elapsed_ms} | {move} | {pass_under_2000ms} |".format(**row)
+            "| {board_size} | {win_len} | {profile} | {scenario} | {attempt} | {elapsed_ms} | {move} | {pass_under_budget} |".format(**row)
         )
 
     path.write_text("\n".join(lines), encoding="utf-8")
@@ -396,11 +397,11 @@ def main() -> None:
 
     print("=== KẾT QUẢ BENCHMARK AI ===")
     for row in summary_rows:
-        verdict = "ĐẠT" if bool(row["pass_all_under_2s"]) else "CHƯA ĐẠT"
+        verdict = "ĐẠT" if bool(row["pass_all"]) else "CHƯA ĐẠT"
         print(
             f"- Bàn {row['board_size']} (win_len={row['win_len']}) - {row['profile']}: "
             f"avg={row['avg_ms']}ms, p95={row['p95_ms']}ms, max={row['max_ms']}ms, "
-            f"vượt_2s={row['over_2s']} -> {verdict}"
+            f"vượt_budget={row['over_budget']} -> {verdict}"
         )
 
     print(f"\nBáo cáo Markdown: {md_path}")

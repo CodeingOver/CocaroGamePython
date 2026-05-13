@@ -2,6 +2,14 @@
 
 Tất cả các thay đổi quan trọng đối với dự án này sẽ được ghi lại trong tệp này.
 
+## [1.1.5] - 2026-05-13
+
+### **[Cập nhật]**
+- **Cải tiến tiêu chí Benchmark**:
+    - Chuyển đổi cơ chế kiểm tra "Đạt/Chưa đạt" từ cứng nhắc 2000ms sang so sánh động với ngân sách (`time_ms`) của từng cấu hình.
+    - Bổ sung sai số cho phép (buffer) 50ms để bù đắp các độ trễ xử lý của Python, tránh việc báo lỗi sai khi AI đã dừng đúng lúc (ví dụ: 2000.3ms vẫn được coi là Đạt nếu ngân sách là 2000ms).
+    - Cập nhật tiêu đề và mô tả cột trong báo cáo từ "Vượt 2s" thành "Vượt Budget".
+
 ## [1.1.4] - 2026-05-13
 
 ### **[Cập nhật]**

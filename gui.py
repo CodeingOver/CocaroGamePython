@@ -74,7 +74,7 @@ class CaroGUI:
     def __init__(self, root: tk.Tk) -> None:
         # Khởi tạo cửa sổ, trạng thái ván đấu và toàn bộ biến điều khiển UI.
         self.root = root
-        self.root.title("Cờ Caro AI v1.2.4 - GBFS + Minimax")
+        self.root.title("Cờ Caro AI v1.2.4 - GBFS + Minimax AB")
         self.root.minsize(760, 680)
 
         self.palette = {

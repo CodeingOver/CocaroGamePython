@@ -269,7 +269,6 @@ class CaroGUI:
 
         tagline = ttk.Label(
             self.menu_frame,
-            text="Mẹo: mở Cài đặt để chọn độ khó phù hợp trước khi chơi.",
             style="Subtitle.TLabel",
             anchor="center",
         )

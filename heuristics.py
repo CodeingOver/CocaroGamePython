@@ -56,7 +56,6 @@ def run_score(length: int, open_ends: int, win_len: int, ai_run: bool) -> int:
 def evaluate_board(game: CaroGame) -> int:
     # Đánh giá toàn cục một trạng thái bàn cờ khi chưa chạm điều kiện kết thúc.
     # Hàm quét cụm liên tiếp theo 4 hướng và chấm điểm dựa trên open-end/open-four.
-    # Đã loại bỏ check_winner() vì Minimax/terminal_utility đã xử lý ở tầng trên.
 
     size = game.size
     win_len = game.win_len

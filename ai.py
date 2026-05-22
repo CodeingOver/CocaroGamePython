@@ -47,7 +47,7 @@ def _greedy_move_score(
             # Cùng một sự kiện thắng ngay nhưng dấu điểm phải phụ thuộc phía đang xét.
             return INF // 4 if player == AI_MARK else -(INF // 4)
 
-        # score luôn được giữ theo góc nhìn AI để ordering MIN/MAX nhất quán.
+        # score luôn được giữ theo góc nhìn AI để MIN/MAX nhất quán.
         score = evaluate_board(game)
 
         # Ưu tiên thêm nếu nước đi hiện tại đồng thời chặn một nước thắng trực tiếp của đối thủ.

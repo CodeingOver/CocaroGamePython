@@ -54,7 +54,7 @@ def _greedy_move_score(
         game.make_move(move, opponent)
         try:
             if game.check_winner(move) == opponent:
-                # Chặn thắng ngay là tín hiệu chiến thuật rất mạnh trong GBFS local scoring.
+                # Chặn thắng ngay được điểm thưởng cao.
                 if player == AI_MARK:
                     score += INF // 8
                 else:

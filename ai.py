@@ -75,7 +75,7 @@ def gbfs_rank_moves(
     deadline: Optional[float] = None,
 ) -> List[Move]:
     # Sắp xếp danh sách nước đi theo điểm tham lam để giảm số nhánh cần duyệt sâu.
-    # Đã bổ sung deadline check để tránh bị kẹt trong giai đoạn sắp xếp ở bàn cờ lớn.
+    # Deadline check để tránh bị kẹt trong giai đoạn sắp xếp ở bàn cờ lớn.
 
     scored: List[Tuple[int, Move]] = []
     for move in moves:
